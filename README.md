@@ -2,11 +2,14 @@
 
 Calendario compartido para dos personas: citas, fechas señaladas y, más adelante, el menú semanal enlazado con la lista de la compra. Es una PWA de un solo archivo alojada en GitHub Pages que usa el mismo proyecto de Firebase que la lista de la compra.
 
-## Qué hace (versión 1)
+## Qué hace (versión 2)
 
-- **Agenda**: la hoja de hoy arriba y, debajo, todo lo de los próximos 60 días.
+- **Agenda**: la hoja de hoy arriba, con el menú del día, y debajo todo lo de los próximos 60 días. El botón «Ver 60 días más» amplía el plazo.
 - **Semana**: los siete días de lunes a domingo. Tocar el número de un día abre una cita nueva en ese día.
 - **Mes**: cuadrícula con un punto de color por cada persona que tiene algo ese día; al tocar un día se ve su lista debajo.
+- **Buscar** (lupa de arriba): encuentra citas por título, lugar o notas, y fechas señaladas por nombre. Muestra primero las próximas y luego las pasadas; al tocar una se abre ese día.
+- **Ir a una fecha**: en Semana, Mes y Menú, al tocar el título se abre el selector de fecha y se salta directamente, sin pasar mes a mes.
+- **Menú**: comida y cena de cada día de la semana. Ver el apartado siguiente.
 - **Fechas**: cumpleaños, aniversarios y otras fechas que se repiten cada año, ordenadas por la más cercana. Con el año de nacimiento calcula los que cumple.
 - **Citas**: para una persona o para los dos, con hora o de día completo, de uno o varios días (vacaciones), con repetición semanal, mensual o anual y fecha de fin opcional.
 - **Citas que se repiten**: al guardar o eliminar, la app pregunta si afecta solo a ese día, a ese día y los siguientes o a toda la serie.
@@ -15,6 +18,15 @@ Calendario compartido para dos personas: citas, fechas señaladas y, más adelan
 - Funciona sin conexión: los cambios se guardan en el móvil y se suben al volver la red.
 
 Colores: la primera persona de `USUARIOS` en azul, la segunda en rosa, «Los dos» en verde y las fechas señaladas con una raya discontinua roja.
+
+## Menú semanal
+
+- Al tocar la comida o la cena de un día se abre el buscador de platos: los usados hace poco aparecen primero y, si el plato no existe, se crea con «Crear».
+- Cada plato se guarda con sus ingredientes (nombre y sección de la lista). Solo hace falta apuntar lo que a veces hay que comprar. Si el ingrediente ya existe en la lista de la compra, la sección se pone sola.
+- Al poner en el menú un plato con ingredientes, la app pregunta «¿Hay que comprar algo?» con los ingredientes sin marcar. Se marcan solo los que falten y se pulsa «Añadir a la lista», o «No hace falta». Los que ya están en la lista aparecen atenuados.
+- «Revisar ingredientes de la semana» junta los ingredientes de todos los platos de la semana visible, sin repetidos, para hacer lo mismo de una vez.
+- Lo que se añade aparece en la lista de la compra como producto puntual, con la nota «Para: nombre del plato» y el nombre de quien lo añadió. Si el producto ya existía (por ejemplo, un habitual), solo se vuelve a poner en la lista.
+- En la parte inferior están los platos guardados para editarlos o eliminarlos. Eliminar un plato no lo borra de los menús ya puestos.
 
 ## Instalación
 
@@ -30,6 +42,9 @@ El calendario reutiliza el proyecto de Firebase de la lista de la compra, así q
 ## Datos en Firestore
 
 - `eventos`: `titulo`, `para` (correo o `ambos`), `fecha` (`AAAA-MM-DD`), `hora` y `horaFin` (`HH:MM`, vacías si es de día completo), `fechaFin` (último día si dura varios), `lugar`, `notas`, `repite` (`no`, `semana`, `mes`, `anio`), `repiteHasta`, `excepciones` (días anulados de la serie), `serie` (en una cita cambiada solo un día, la serie de la que sale), `aviso`, `creadoPor`, `creadoEn`, `editadoPor`, `editadoEn`.
+- `platos`: `nombre`, `ingredientes` (lista de `{nombre, categoria}`, con los identificadores de sección de la lista de la compra), `notas`, `ultimoUso`.
+- `menu`: un documento por día con el identificador `AAAA-MM-DD` y los campos `comida` y `cena`, cada uno una lista de `{id, nombre}` del plato.
+- `items` (de la lista de la compra): el calendario solo añade productos o los vuelve a poner en la lista, con los mismos campos que usa esa app.
 - `fechas`: `tipo` (`cumple`, `aniversario`, `otra`), `nombre`, `dia`, `mes`, `anio` (opcional), `notas` y los mismos campos de autoría.
 
 Las fechas se guardan como texto en hora local de España, así no hay desfases de zona horaria.
@@ -42,12 +57,11 @@ Las fechas se guardan como texto en hora local de España, así no hay desfases 
 
 ## Próximas fases
 
-1. **Menú semanal**: comida y cena de cada día, platos guardados con sus ingredientes. Al poner un plato, la app propondrá añadir sus ingredientes a la lista de la compra, siempre como sugerencia opcional (se puede elegir cuáles o ninguno, porque a veces ya hay de todo en casa). Las colecciones `platos` y `menu` ya están en las reglas.
-2. **Notificaciones push** con una tarea programada gratuita de GitHub Actions, sin plan de pago en Firebase. El campo `aviso` de cada cita ya se está guardando para entonces.
-3. **Enlace de suscripción** (.ics) de solo lectura para ver lo compartido en Google Calendar.
+1. **Notificaciones push** con una tarea programada gratuita de GitHub Actions, sin plan de pago en Firebase. El campo `aviso` de cada cita ya se está guardando para entonces.
+2. **Enlace de suscripción** (.ics) de solo lectura para ver lo compartido en Google Calendar.
 
 ## Límites conocidos
 
 - **Google en iPhone**: dentro de la app instalada, Apple puede bloquear la ventana de Google. Entra con correo y contraseña; la sesión queda guardada.
-- **Lecturas**: la app descarga todas las citas al abrirse. Con el uso de dos personas queda muy por debajo del límite gratuito de 50.000 lecturas diarias.
+- **Lecturas**: la app descarga todas las citas, los platos y los productos al abrirse, y los menús solo desde cuatro semanas atrás (si se navega más atrás, los descarga entonces). Con el uso de dos personas queda muy por debajo del límite gratuito de 50.000 lecturas diarias.
 - El repositorio es público: no escribas correos ni datos personales en este README ni en los *commits*.

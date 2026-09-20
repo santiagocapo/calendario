@@ -63,7 +63,7 @@ button{font:inherit;color:inherit;cursor:pointer}
         font:700 1.1rem var(--display);flex:none}
 main{max-width:640px;margin:0 auto;padding-bottom:calc(var(--nav-h) + 90px + env(safe-area-inset-bottom))}
 .tabs{position:fixed;left:0;right:0;bottom:0;z-index:6;background:var(--surface);border-top:1px solid var(--line);
-      display:grid;grid-template-columns:repeat(4,1fr);padding-bottom:env(safe-area-inset-bottom)}
+      display:grid;grid-template-columns:repeat(5,1fr);padding-bottom:env(safe-area-inset-bottom)}
 .tabs button{height:var(--nav-h);border:0;background:none;color:var(--muted);font-size:.9rem;position:relative}
 .tabs button[aria-current=page]{color:var(--ink);font-weight:600}
 .tabs button[aria-current=page]::before{content:"";position:absolute;top:0;left:30%;right:30%;height:3px;
@@ -192,6 +192,52 @@ textarea{resize:vertical}
 .alc-ops{display:grid;gap:.5rem}
 .alc-ops .btn{width:100%}
 .alc-ops .cancelar{border:0;background:none;color:var(--muted);font-weight:500}
+.icono{width:36px;height:36px;border-radius:50%;border:0;background:none;display:grid;place-items:center;flex:none}
+.icono svg{width:22px;height:22px}
+.buscar{display:flex;gap:.5rem;margin:.25rem 16px 1rem}
+.buscar input{flex:1}
+.saltar{position:relative;flex:1;display:flex;justify-content:center;min-width:0}
+.nav .saltar h1{flex:0 1 auto}
+.saltar h1::after{content:"";display:inline-block;width:.45em;height:.45em;margin:0 0 .15em .4em;border:solid var(--muted);
+  border-width:0 2px 2px 0;transform:rotate(45deg)}
+.saltar input{position:absolute;inset:0;opacity:0;width:100%;height:100%;cursor:pointer;padding:0;border:0}
+.mas{display:block;margin:0 auto 1rem}
+.mini .a{display:block;font-size:.7rem;color:var(--muted);padding-bottom:.2rem}
+.taco-menu{text-align:left;margin:.75rem 0 0;padding-top:.6rem;border-top:1px solid var(--line);font-size:.9rem}
+.taco-menu span{color:var(--muted)}
+.btn.ancho{display:block;width:calc(100% - 32px);margin:0 16px 1rem}
+.md{display:grid;grid-template-columns:3.4rem 1fr;gap:.75rem;padding:.55rem 16px;border-top:1px solid var(--line)}
+.md.hoy .sd-fecha{background:var(--ink);color:var(--bg)}
+.md.hoy .sd-fecha .w,.md.hoy .sd-fecha.dom .n{color:inherit}
+.md-slots{display:grid;gap:.4rem}
+.slot{display:grid;grid-template-columns:3.6rem 1fr;gap:.5rem;align-items:baseline;text-align:left;border:1px solid var(--line);
+      background:var(--surface);border-radius:10px;padding:.5rem .7rem}
+.slot-l{font:600 1.05rem/1.2 var(--display);color:var(--muted)}
+.slot-v{font-weight:600;overflow-wrap:anywhere}
+.slot-v .libre{font-weight:400;margin:0}
+.platos-lista{margin:0 16px}
+.platos-lista .ent{grid-template-columns:1fr auto;align-items:baseline}
+.opciones{display:flex;flex-wrap:wrap;gap:.4rem}
+.opciones .ayuda{width:100%}
+.opcion{border:1px solid var(--line);background:var(--bg);border-radius:999px;padding:.45rem .85rem;font-weight:600;
+        display:flex;gap:.4rem;align-items:baseline}
+.opcion small{color:var(--muted);font-weight:400}
+.opcion.nueva{border-style:dashed;color:var(--red)}
+.plato-fila{display:flex;align-items:center;gap:.5rem;padding:.45rem 0}
+.plato-fila .t{flex:1;font-weight:600}
+.enlace{border:0;background:none;color:var(--p1);font-weight:600;padding:.3rem .2rem}
+.enlace.peligro{color:var(--red)}
+.ingredientes{border:0;padding:0;margin:0}
+.ingredientes legend{font-size:.85rem;color:var(--muted);padding:0;margin-bottom:.3rem}
+.ing{display:grid;grid-template-columns:1fr 8.5rem 36px;gap:.4rem;align-items:center;margin-bottom:.4rem}
+.ing .x{width:36px;height:36px}
+.checks{list-style:none;margin:0;padding:0}
+.checks li+li{border-top:1px solid var(--line)}
+.check{display:flex;gap:.75rem;align-items:flex-start;padding:.6rem 0;cursor:pointer}
+.check input{width:1.3rem;height:1.3rem;margin:.1rem 0 0;accent-color:var(--red);flex:none}
+.check .t{display:block;font-weight:600}
+.check small{display:block;color:var(--muted);font-size:.85rem}
+.check.ya{opacity:.55}
 .serie-aviso{margin:0;padding:.6rem .75rem;border-radius:10px;background:var(--bg);font-size:.875rem;color:var(--muted)}
 #menu p{margin:0 0 .25rem}
 #menu .acciones{margin-top:1rem}
@@ -235,6 +281,8 @@ textarea{resize:vertical}
 <div id="v-app" hidden>
   <header class="top">
     <div class="chips" role="group" aria-label="Qué citas mostrar"></div>
+    <button class="icono" id="btn-buscar" type="button" aria-label="Buscar citas y fechas">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="10.5" cy="10.5" r="6.5"/><path d="M15.5 15.5 20 20"/></svg></button>
     <button class="avatar" id="btn-cuenta" type="button" aria-label="Cuenta"></button>
   </header>
   <main id="main"></main>
@@ -246,6 +294,7 @@ textarea{resize:vertical}
     <button data-v="semana" type="button">Semana</button>
     <button data-v="mes" type="button">Mes</button>
     <button data-v="fechas" type="button">Fechas</button>
+    <button data-v="menu" type="button">Menú</button>
   </nav>
 </div>
 
@@ -304,6 +353,43 @@ textarea{resize:vertical}
       <button type="submit" class="btn primary">Guardar</button>
     </div>
   </form>
+
+  <div id="h-slot" class="hoja" hidden>
+    <div class="hoja-cab"><h2 id="hs-titulo"></h2><button type="button" class="x" data-cerrar aria-label="Cerrar">×</button></div>
+    <ul class="lista" id="hs-actuales"></ul>
+    <label class="campo"><span>Añadir plato</span><input id="hs-q" autocomplete="off" maxlength="80" placeholder="Lentejas, tortilla, pescado…" enterkeyhint="done"></label>
+    <div class="opciones" id="hs-opciones"></div>
+    <p class="err" hidden></p>
+  </div>
+
+  <form id="f-plato" class="hoja" novalidate hidden>
+    <div class="hoja-cab"><h2 id="fp-titulo">Nuevo plato</h2><button type="button" class="x" data-cerrar aria-label="Volver">×</button></div>
+    <label class="campo"><span>Nombre</span><input name="nombre" maxlength="80" autocomplete="off"></label>
+    <fieldset class="ingredientes">
+      <legend>Ingredientes que a veces hay que comprar</legend>
+      <div id="fp-ings"></div>
+      <button type="button" class="btn" id="fp-mas">Añadir ingrediente</button>
+    </fieldset>
+    <p class="ayuda">No hace falta poner la sal ni lo que siempre hay en casa. Al poner el plato en el menú, la app preguntará cuáles de estos hay que comprar.</p>
+    <label class="campo"><span>Notas (opcional)</span><textarea name="notas" rows="2" maxlength="1000" placeholder="Receta, enlace, para cuántos…"></textarea></label>
+    <p class="err" hidden></p>
+    <div class="acciones">
+      <button type="button" class="btn peligro" id="fp-borrar">Eliminar plato</button>
+      <button type="submit" class="btn primary">Guardar</button>
+    </div>
+  </form>
+
+  <div id="h-compra" class="hoja" hidden>
+    <div class="hoja-cab"><h2 id="hc-titulo"></h2><button type="button" class="x" data-cerrar aria-label="Volver">×</button></div>
+    <div class="acciones"><p class="ayuda" style="flex:1">Marca solo lo que haya que comprar.</p><button type="button" class="enlace" id="hc-todo">Marcar todo</button></div>
+    <ul class="checks" id="hc-lista"></ul>
+    <p class="err" hidden></p>
+    <div class="acciones">
+      <button type="button" class="btn" id="hc-no">No hace falta</button>
+      <button type="button" class="btn primary" id="hc-si" disabled>Añadir a la lista</button>
+    </div>
+  </div>
+  <datalist id="dl-productos"></datalist>
 </dialog>
 
 <dialog id="menu" aria-label="Cuenta">
@@ -333,7 +419,7 @@ textarea{resize:vertical}
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.2/firebase-app.js";
 import { getAuth, onAuthStateChanged, GoogleAuthProvider, signInWithPopup, signInWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/11.0.2/firebase-auth.js";
-import { initializeFirestore, persistentLocalCache, persistentMultipleTabManager, collection, onSnapshot, addDoc, setDoc, doc, deleteDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.0.2/firebase-firestore.js";
+import { initializeFirestore, persistentLocalCache, persistentMultipleTabManager, collection, onSnapshot, addDoc, setDoc, updateDoc, doc, deleteDoc, serverTimestamp, query, where, documentId } from "https://www.gstatic.com/firebasejs/11.0.2/firebase-firestore.js";
 
 /* =========================  utilidades de fecha  ========================= */
 const $ = s => document.querySelector(s);
@@ -361,7 +447,19 @@ const REPITE = { semana: "Cada semana", mes: "Cada mes", anio: "Cada año" };
 /* =========================  estado  ========================= */
 let firebaseConfig, USUARIOS = {}, PERSONAS = [];
 let auth, db, me = null, eventos = [], fechas = [], escuchas = [];
-const st = { vista: "agenda", filtro: "todo", semana: null, mes: null, dia: null };
+const st = { vista: "agenda", filtro: "todo", semana: null, mes: null, dia: null, menuSemana: null, dias: 60, q: "" };
+let menu = new Map(), platos = [], items = [], menuDesde = null, unsubMenu = null;
+const norm = s => String(s || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
+
+// Secciones de la lista de la compra (mismos identificadores que en esa app).
+const CATS = [
+  { id: "carniceria", n: "Carnicería" }, { id: "pescaderia", n: "Pescadería" }, { id: "fruta", n: "Fruta y verdura" },
+  { id: "panaderia", n: "Panadería y cereales" }, { id: "pasta", n: "Pasta, arroz, legumbres" }, { id: "aceites", n: "Aceites y salsas" },
+  { id: "conservas", n: "Conservas" }, { id: "lacteos", n: "Lácteos y huevos" }, { id: "cuidado", n: "Cuidado personal" },
+  { id: "hogar", n: "Hogar" }, { id: "bebidas", n: "Vino, cerveza, licores" }
+];
+const catNombre = id => CATS.find(c => c.id === id)?.n || "";
+const SLOTS = { comida: "Comida", cena: "Cena" };
 
 const nombreDe = email => USUARIOS[email] || email || "alguien";
 const persona = email => PERSONAS.find(p => p.email === email);
@@ -411,6 +509,21 @@ function escuchar() {
     : "Error de conexión: " + e.message);
   escuchas.push(onSnapshot(collection(db, "eventos"), s => { eventos = s.docs.map(d => ({ id: d.id, ...d.data() })); render(); }, fallo));
   escuchas.push(onSnapshot(collection(db, "fechas"), s => { fechas = s.docs.map(d => ({ id: d.id, ...d.data() })); render(); }, fallo));
+  escuchas.push(onSnapshot(collection(db, "platos"), s => { platos = s.docs.map(d => ({ id: d.id, ...d.data() })); render(); if (!hSlot.hidden && sheet.open) pintarSlot(); }, fallo));
+  escuchas.push(onSnapshot(collection(db, "items"), s => { items = s.docs.map(d => ({ id: d.id, ...d.data() })); }, fallo));
+  escuchas.push(() => { if (unsubMenu) unsubMenu(); unsubMenu = null; menuDesde = null; });
+  escucharMenu(addDays(monday(today()), -28));
+}
+
+// Solo se descargan los menús desde unas semanas atrás; si se navega más atrás, se amplía.
+function escucharMenu(desde) {
+  if (unsubMenu) unsubMenu();
+  menuDesde = desde;
+  unsubMenu = onSnapshot(query(collection(db, "menu"), where(documentId(), ">=", ymd(desde))), s => {
+    menu = new Map(s.docs.map(d => [d.id, d.data()]));
+    render();
+    if (!hSlot.hidden && sheet.open) pintarSlot();
+  }, e => toast(e.code === "permission-denied" ? "Sin permiso para leer el menú. Revisa las reglas de Firestore." : "Error de conexión: " + e.message));
 }
 
 function pantallaLogin(msg) {
@@ -527,19 +640,24 @@ const htmlLista = l => `<ul class="lista">${l.map(htmlEntrada).join("")}</ul>`;
 const flecha = izq => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="${izq ? "M15 5l-7 7 7 7" : "M9 5l7 7-7 7"}"/></svg>`;
 
 function vAgenda() {
-  const hoy = today(), mapa = recoger(hoy, addDays(hoy, 60)), lHoy = mapa.get(ymd(hoy)) || [];
+  const hoy = today(), N = st.dias, mapa = recoger(hoy, addDays(hoy, N)), lHoy = mapa.get(ymd(hoy)) || [];
+  const mHoy = menu.get(ymd(hoy)) || {};
+  const menuHoy = Object.keys(SLOTS).filter(k => mHoy[k]?.length)
+    .map(k => `<span>${SLOTS[k]}:</span> ${esc(mHoy[k].map(nombrePlato).join(", "))}`).join(". ");
   let h = `<section class="taco${hoy.getDay() === 0 ? " dom" : ""}" aria-label="Hoy">
     <div class="taco-banda"><span class="aro"></span><span>${cap(F_MES.format(hoy))} ${hoy.getFullYear()}</span><span class="aro"></span></div>
     <div class="taco-cuerpo"><div class="taco-num">${hoy.getDate()}</div><div class="taco-dia">${F_WD.format(hoy)}</div>
-    ${lHoy.length ? htmlLista(lHoy) : `<p class="vacio">Nada apuntado para hoy.</p>`}</div></section>`;
+    ${lHoy.length ? htmlLista(lHoy) : `<p class="vacio">Nada apuntado para hoy.</p>`}
+    ${menuHoy ? `<p class="taco-menu">${menuHoy}.</p>` : ""}</div></section>`;
   let dias = "";
-  for (let i = 1; i <= 60; i++) {
+  for (let i = 1; i <= N; i++) {
     const d = addDays(hoy, i), l = mapa.get(ymd(d));
     if (!l) continue;
     dias += `<section class="dia"><h2${d.getDay() === 0 ? ' class="dom"' : ""}>${i === 1 ? "Mañana, " : ""}${F_DIA.format(d)}</h2>${htmlLista(l)}</section>`;
   }
-  return h + `<h2 class="sec">Próximos 60 días</h2>` +
-    (dias || `<p class="vacio" style="margin:0 16px">No hay nada en los próximos 60 días. Pulsa + para añadir una cita.</p>`);
+  return h + `<h2 class="sec">Próximos ${N} días</h2>` +
+    (dias || `<p class="vacio" style="margin:0 16px 1rem">No hay nada en los próximos ${N} días. Pulsa + para añadir una cita.</p>`) +
+    `<button type="button" class="btn mas" data-mas>Ver 60 días más</button>`;
 }
 
 function vSemana() {
@@ -550,7 +668,7 @@ function vSemana() {
     ? `${ini.getDate()} – ${fin.getDate()} de ${F_MES.format(fin)}`
     : `${ini.getDate()} ${F_MESC.format(ini)} – ${fin.getDate()} ${F_MESC.format(fin)}`;
   let h = `<div class="nav"><button type="button" data-nav="-1" aria-label="Semana anterior">${flecha(true)}</button>
-    <h1>${rango}</h1><button type="button" data-nav="1" aria-label="Semana siguiente">${flecha(false)}</button></div>`;
+    <label class="saltar"><h1>${rango}</h1><input type="date" data-saltar aria-label="Ir a una fecha"></label><button type="button" data-nav="1" aria-label="Semana siguiente">${flecha(false)}</button></div>`;
   if (ymd(ini) !== ymd(monday(hoy))) h += `<button type="button" class="hoy-btn" data-hoy>Volver a esta semana</button>`;
   for (let i = 0; i < 7; i++) {
     const d = addDays(ini, i), k = ymd(d), l = mapa.get(k);
@@ -570,7 +688,7 @@ function vMes() {
   const ini = monday(ref), ultimo = new Date(ref.getFullYear(), ref.getMonth() + 1, 0), fin = addDays(monday(ultimo), 6);
   const mapa = recoger(ini, fin);
   let h = `<div class="nav"><button type="button" data-nav="-1" aria-label="Mes anterior">${flecha(true)}</button>
-    <h1>${F_MES.format(ref)} de ${ref.getFullYear()}</h1><button type="button" data-nav="1" aria-label="Mes siguiente">${flecha(false)}</button></div>`;
+    <label class="saltar"><h1>${F_MES.format(ref)} de ${ref.getFullYear()}</h1><input type="date" data-saltar aria-label="Ir a una fecha"></label><button type="button" data-nav="1" aria-label="Mes siguiente">${flecha(false)}</button></div>`;
   if (ref.getMonth() !== hoy.getMonth() || ref.getFullYear() !== hoy.getFullYear()) h += `<button type="button" class="hoy-btn" data-hoy>Volver a hoy</button>`;
   h += `<div class="grid">` + ["L", "M", "X", "J", "V", "S", "D"].map((t, i) => `<div class="cab${i === 6 ? " dom" : ""}" aria-hidden="true">${t}</div>`).join("");
   for (let d = ini; d <= fin; d = addDays(d, 1)) {
@@ -603,12 +721,84 @@ function vFechas() {
   return h + `</ul>`;
 }
 
+const nombrePlato = e => platos.find(p => p.id === e.id)?.nombre || e.nombre;
+const rangoSemana = (ini, fin) => ini.getMonth() === fin.getMonth()
+  ? `${ini.getDate()} – ${fin.getDate()} de ${F_MES.format(fin)}`
+  : `${ini.getDate()} ${F_MESC.format(ini)} – ${fin.getDate()} ${F_MESC.format(fin)}`;
+
+function vMenu() {
+  const hoy = today(), ini = st.menuSemana || monday(hoy), fin = addDays(ini, 6);
+  st.menuSemana = ini;
+  if (menuDesde && ini < menuDesde) escucharMenu(addDays(ini, -28));
+  let h = `<div class="nav"><button type="button" data-nav="-1" aria-label="Semana anterior">${flecha(true)}</button>
+    <label class="saltar"><h1>${rangoSemana(ini, fin)}</h1><input type="date" data-saltar aria-label="Ir a una fecha"></label>
+    <button type="button" data-nav="1" aria-label="Semana siguiente">${flecha(false)}</button></div>`;
+  if (ymd(ini) !== ymd(monday(hoy))) h += `<button type="button" class="hoy-btn" data-hoy>Volver a esta semana</button>`;
+  h += `<button type="button" class="btn ancho" data-compra-semana>Revisar ingredientes de la semana</button>`;
+  for (let i = 0; i < 7; i++) {
+    const d = addDays(ini, i), k = ymd(d), m = menu.get(k) || {};
+    h += `<section class="md${k === ymd(hoy) ? " hoy" : ""}">
+      <div class="sd-fecha${d.getDay() === 0 ? " dom" : ""}"><span class="n">${d.getDate()}</span><span class="w">${F_WDS.format(d).replace(".", "")}</span></div>
+      <div class="md-slots">${Object.entries(SLOTS).map(([s, t]) => `<button type="button" class="slot" data-slot="${s}" data-f="${k}" aria-label="${t} del ${F_DIA.format(d)}">
+        <span class="slot-l">${t}</span><span class="slot-v">${m[s]?.length ? esc(m[s].map(nombrePlato).join(", ")) : `<span class="libre">Sin decidir</span>`}</span></button>`).join("")}</div></section>`;
+  }
+  h += `<h2 class="sec" style="margin-top:1.75rem">Platos guardados</h2>`;
+  const l = [...platos].sort((a, b) => a.nombre.localeCompare(b.nombre, "es"));
+  h += l.length
+    ? `<ul class="lista platos-lista">${l.map(p => `<li><button type="button" class="ent" data-plato="${esc(p.id)}"><span class="t">${esc(p.nombre)}</span>
+        <span class="meta">${p.ingredientes?.length ? `${p.ingredientes.length} ${p.ingredientes.length === 1 ? "ingrediente" : "ingredientes"}` : "Sin ingredientes"}</span></button></li>`).join("")}</ul>`
+    : `<p class="intro">Aún no hay platos. Se guardan solos al ponerlos en el menú, con sus ingredientes para no tener que repetirlos.</p>`;
+  return h + `<button type="button" class="btn mas" data-nuevo-plato style="margin-top:1rem">Nuevo plato</button>`;
+}
+
+function vBuscar() {
+  return `<div class="buscar"><input type="search" id="q" placeholder="Buscar citas y fechas" value="${esc(st.q)}" autocomplete="off" enterkeyhint="search" aria-label="Buscar">
+    <button type="button" class="btn" data-cerrar-buscar>Cerrar</button></div><div id="resultados">${resultados()}</div>`;
+}
+function resultados() {
+  const q = norm(st.q);
+  if (q.length < 2) return `<p class="intro">Escribe al menos dos letras. Se busca en el título, el lugar y las notas de las citas, y en las fechas señaladas.</p>`;
+  const hoy = today(), fut = [], pas = [];
+  for (const ev of eventos) {
+    if (!norm(`${ev.titulo} ${ev.lugar || ""} ${ev.notas || ""}`).includes(q)) continue;
+    const dur = ev.fechaFin ? diffDays(parse(ev.fecha), parse(ev.fechaFin)) : 0;
+    const prox = inicios(ev, addDays(hoy, -dur), addDays(hoy, 3 * 366))[0];
+    if (prox) fut.push({ d: prox, html: filaRes(prox, "evento", ev) });
+    else { const d = parse(ev.repite && ev.repite !== "no" && ev.repiteHasta ? ev.repiteHasta : ev.fecha); pas.push({ d, html: filaRes(inicios(ev, addDays(d, -400), d).pop() || parse(ev.fecha), "evento", ev) }); }
+  }
+  for (const f of fechas) {
+    if (!norm(`${f.nombre} ${f.notas || ""}`).includes(q)) continue;
+    const n = proxima(f, hoy); fut.push({ d: n, html: filaRes(n, "fecha", f) });
+  }
+  if (!fut.length && !pas.length) return `<p class="intro">No hay nada que contenga «${esc(st.q.trim())}».</p>`;
+  fut.sort((a, b) => a.d - b.d); pas.sort((a, b) => b.d - a.d);
+  let h = "";
+  if (fut.length) h += `<h2 class="sec">Próximas</h2><ul class="lista fechas">${fut.map(x => x.html).join("")}</ul>`;
+  if (pas.length) h += `<h2 class="sec" style="margin-top:1.25rem">Pasadas</h2><ul class="lista fechas">${pas.map(x => x.html).join("")}</ul>`;
+  return h;
+}
+function filaRes(d, k, x) {
+  const hoy = today(), anio = d.getFullYear() !== hoy.getFullYear() ? `<span class="a">${d.getFullYear()}</span>` : "";
+  let t, meta;
+  if (k === "fecha") { t = tituloFecha(x); meta = [aniosTexto(x, x.anio ? d.getFullYear() - x.anio : null)]; }
+  else {
+    t = x.titulo;
+    meta = [F_WD.format(d), x.hora ? x.hora : "Todo el día", nombrePara(x.para), x.repite && x.repite !== "no" ? REPITE[x.repite] : ""];
+  }
+  return `<li><button type="button" class="ent" data-k="${k}" data-id="${esc(x.id)}" data-occ="${ymd(d)}">
+    <span class="mini"><span class="m">${esc(F_MESC.format(d).replace(".", ""))}</span><span class="n">${d.getDate()}</span>${anio}</span>
+    <span><span class="t">${esc(t)}</span><span class="meta">${meta.filter(Boolean).map(m => `<span>${esc(m)}</span>`).join("")}</span></span></button></li>`;
+}
+
 function render() {
   if (!me) return;
+  document.querySelectorAll(".tabs button").forEach(b => b.setAttribute("aria-current", b.dataset.v === st.vista ? "page" : "false"));
+  $("#fab").hidden = st.vista === "menu" || st.vista === "buscar";
+  $(".chips").style.visibility = st.vista === "menu" ? "hidden" : "";
+  if (st.vista === "buscar" && $("#q")) { $("#resultados").innerHTML = resultados(); return; }   // no perder el foco al escribir
   $(".chips").innerHTML = [["todo", "Todo", ""], ...PERSONAS.map(p => [p.email, p.nombre, p.color])]
     .map(([v, t, c]) => `<button type="button" data-filtro="${esc(v)}" aria-pressed="${st.filtro === v}"${c ? ` style="--c:${c}"` : ""}>${c ? "<i></i>" : ""}${esc(t)}</button>`).join("");
-  $("#main").innerHTML = ({ agenda: vAgenda, semana: vSemana, mes: vMes, fechas: vFechas })[st.vista]();
-  document.querySelectorAll(".tabs button").forEach(b => b.setAttribute("aria-current", b.dataset.v === st.vista ? "page" : "false"));
+  $("#main").innerHTML = ({ agenda: vAgenda, semana: vSemana, mes: vMes, fechas: vFechas, menu: vMenu, buscar: vBuscar })[st.vista]();
   $("#fab").setAttribute("aria-label", st.vista === "fechas" ? "Añadir fecha señalada" : "Añadir cita");
 }
 
@@ -621,17 +811,39 @@ $(".tabs").addEventListener("click", e => {
   const b = e.target.closest("[data-v]"); if (!b) return;
   st.vista = b.dataset.v; render(); window.scrollTo(0, 0);
 });
+$("#btn-buscar").addEventListener("click", () => {
+  st.vista = "buscar"; $("#main").innerHTML = ""; render(); window.scrollTo(0, 0);
+  const q = $("#q"); q.focus(); q.select();
+});
+$("#main").addEventListener("input", e => { if (e.target.id === "q") { st.q = e.target.value; $("#resultados").innerHTML = resultados(); } });
+$("#main").addEventListener("change", e => {
+  if (!e.target.matches("[data-saltar]") || !e.target.value) return;
+  const d = parse(e.target.value);
+  if (st.vista === "semana") st.semana = monday(d);
+  else if (st.vista === "menu") st.menuSemana = monday(d);
+  else { st.mes = new Date(d.getFullYear(), d.getMonth(), 1); st.dia = d; }
+  render();
+});
 $("#main").addEventListener("click", e => {
-  const t = e.target.closest("[data-k],[data-nav],[data-dia],[data-nuevo],[data-hoy]"); if (!t) return;
+  const s = e.target.closest("[data-saltar]");
+  if (s) { try { s.showPicker(); } catch { } return; }
+  const t = e.target.closest("[data-k],[data-nav],[data-dia],[data-nuevo],[data-hoy],[data-mas],[data-slot],[data-plato],[data-nuevo-plato],[data-compra-semana],[data-cerrar-buscar]"); if (!t) return;
   const hoy = today();
+  if ("mas" in t.dataset) { st.dias += 60; return render(); }
+  if (t.dataset.slot) return abrirSlot(t.dataset.f, t.dataset.slot);
+  if (t.dataset.plato) { const p = platos.find(x => x.id === t.dataset.plato); if (p) { slotCtx = null; abrirPlato(p); } return; }
+  if ("nuevoPlato" in t.dataset) { slotCtx = null; return abrirPlato(null); }
+  if ("compraSemana" in t.dataset) return compraSemana();
+  if ("cerrarBuscar" in t.dataset) { st.vista = "agenda"; return render(); }
   if (t.dataset.k === "evento") { const ev = eventos.find(x => x.id === t.dataset.id); if (ev) abrirEvento(ev, null, t.dataset.occ); }
   else if (t.dataset.k === "fecha") { const f = fechas.find(x => x.id === t.dataset.id); if (f) abrirFecha(f); }
   else if (t.dataset.nuevo) abrirEvento(null, t.dataset.nuevo);
   else if (t.dataset.dia) { st.dia = parse(t.dataset.dia); render(); }
-  else if ("hoy" in t.dataset) { st.semana = null; st.mes = null; st.dia = null; render(); }
+  else if ("hoy" in t.dataset) { st.semana = null; st.mes = null; st.dia = null; st.menuSemana = null; render(); }
   else if (t.dataset.nav) {
     const n = Number(t.dataset.nav);
     if (st.vista === "semana") st.semana = addDays(st.semana, 7 * n);
+    else if (st.vista === "menu") st.menuSemana = addDays(st.menuSemana, 7 * n);
     else {
       st.mes = new Date(st.mes.getFullYear(), st.mes.getMonth() + n, 1);
       const esteMes = st.mes.getMonth() === hoy.getMonth() && st.mes.getFullYear() === hoy.getFullYear();
@@ -654,17 +866,27 @@ $("#btn-salir").addEventListener("click", () => { $("#menu").close(); signOut(au
 document.addEventListener("visibilitychange", () => { if (!document.hidden) render(); });   // cambio de día con la app abierta
 
 /* =========================  hoja de edición  ========================= */
-const sheet = $("#sheet"), fe = $("#f-evento"), ff = $("#f-fecha");
-let editando = null;
+const sheet = $("#sheet"), fe = $("#f-evento"), ff = $("#f-fecha"), hSlot = $("#h-slot"), fp = $("#f-plato"), hCompra = $("#h-compra");
+const PANELES = [fe, ff, hSlot, fp, hCompra];
+let editando = null, slotCtx = null, platoEdit = null, compraCtx = null;
 
 function abrirHoja(form) {
-  fe.hidden = form !== fe; ff.hidden = form !== ff;
+  PANELES.forEach(x => { x.hidden = x !== form; });
   form.querySelector(".err").hidden = true;
-  sheet.showModal(); sheet.scrollTop = 0;
+  if (!sheet.open) sheet.showModal();
+  sheet.scrollTop = 0;
 }
-function cerrarHoja() { sheet.close(); editando = null; }
-sheet.addEventListener("click", e => { if (e.target === sheet || e.target.closest("[data-cerrar]")) cerrarHoja(); });
-sheet.addEventListener("close", () => { editando = null; });
+function cerrarHoja() { sheet.close(); }
+// La × de un plato o de la compra vuelve a la comida desde la que se abrió; en lo demás, cierra.
+function atras() {
+  if ((!fp.hidden || !hCompra.hidden) && slotCtx) abrirSlotPanel();
+  else cerrarHoja();
+}
+sheet.addEventListener("click", e => {
+  if (e.target === sheet) return cerrarHoja();
+  if (e.target.closest("[data-cerrar]")) atras();
+});
+sheet.addEventListener("close", () => { editando = null; slotCtx = null; platoEdit = null; compraCtx = null; });
 function errorHoja(form, msg) { const p = form.querySelector(".err"); p.textContent = msg; p.hidden = false; p.scrollIntoView({ block: "nearest" }); }
 
 const autoria = x => {
@@ -846,6 +1068,195 @@ $("#ff-borrar").addEventListener("click", () => {
   cerrarHoja();
   borrar("fechas", it, "Fecha eliminada");
 });
+
+/* =========================  menú semanal  ========================= */
+function escribirSlot(fecha, slot, lista) {
+  setDoc(doc(db, "menu", fecha), { [slot]: lista, editadoPor: me, editadoEn: serverTimestamp() }, { merge: true }).catch(fallo);
+}
+function abrirSlot(fecha, slot) {
+  slotCtx = { fecha, slot };
+  $("#hs-q").value = "";
+  abrirSlotPanel();
+}
+function abrirSlotPanel() { pintarSlot(); abrirHoja(hSlot); }
+function pintarSlot() {
+  if (!slotCtx) return;
+  const { fecha, slot } = slotCtx, lista = menu.get(fecha)?.[slot] || [];
+  $("#hs-titulo").textContent = `${SLOTS[slot]}, ${F_DIA.format(parse(fecha))}`;
+  $("#hs-actuales").innerHTML = lista.length
+    ? lista.map((e, i) => `<li class="plato-fila"><span class="t">${esc(nombrePlato(e))}</span>
+        ${platos.some(p => p.id === e.id) ? `<button type="button" class="enlace" data-editar-plato="${esc(e.id)}">Editar</button>` : ""}
+        <button type="button" class="enlace peligro" data-quitar="${i}">Quitar</button></li>`).join("")
+    : `<li class="vacio">Todavía no hay nada.</li>`;
+  pintarOpciones();
+}
+function pintarOpciones() {
+  const qRaw = $("#hs-q").value.trim(), q = norm(qRaw);
+  const ya = new Set((menu.get(slotCtx.fecha)?.[slotCtx.slot] || []).map(e => e.id));
+  let l = platos.filter(p => !ya.has(p.id));
+  l = q ? l.filter(p => norm(p.nombre).includes(q)).sort((a, b) => a.nombre.localeCompare(b.nombre, "es"))
+        : l.sort((a, b) => (b.ultimoUso || "").localeCompare(a.ultimoUso || "") || a.nombre.localeCompare(b.nombre, "es"));
+  l = l.slice(0, 8);
+  let h = l.map(p => `<button type="button" class="opcion" data-elegir="${esc(p.id)}">${esc(p.nombre)}${p.ingredientes?.length ? `<small>${p.ingredientes.length} ingr.</small>` : ""}</button>`).join("");
+  if (q && !platos.some(p => norm(p.nombre) === q)) h += `<button type="button" class="opcion nueva" data-crear>Crear «${esc(qRaw)}»</button>`;
+  if (!q && l.length) h = `<p class="ayuda">Usados hace poco</p>` + h;
+  if (!h) h = `<p class="ayuda">${platos.length ? "Escribe para buscar o crear un plato." : "Escribe el nombre del plato para crearlo."}</p>`;
+  $("#hs-opciones").innerHTML = h;
+}
+$("#hs-q").addEventListener("input", pintarOpciones);
+$("#hs-q").addEventListener("keydown", e => {
+  if (e.key !== "Enter") return;
+  e.preventDefault();
+  const b = $("#hs-opciones").querySelector("[data-elegir],[data-crear]"); if (b) b.click();
+});
+hSlot.addEventListener("click", e => {
+  const t = e.target.closest("[data-elegir],[data-crear],[data-editar-plato],[data-quitar]"); if (!t) return;
+  if (t.dataset.elegir) { const p = platos.find(x => x.id === t.dataset.elegir); if (p) elegirPlato(p); }
+  else if ("crear" in t.dataset) abrirPlato(null, $("#hs-q").value.trim());
+  else if (t.dataset.editarPlato) { const p = platos.find(x => x.id === t.dataset.editarPlato); if (p) abrirPlato(p); }
+  else if (t.dataset.quitar) {
+    const { fecha, slot } = slotCtx, lista = [...(menu.get(fecha)?.[slot] || [])];
+    const [quitado] = lista.splice(Number(t.dataset.quitar), 1);
+    escribirSlot(fecha, slot, lista);
+    toast(`${nombrePlato(quitado)} quitado del menú`);
+  }
+});
+
+function elegirPlato(p) {
+  const { fecha, slot } = slotCtx;
+  escribirSlot(fecha, slot, [...(menu.get(fecha)?.[slot] || []), { id: p.id, nombre: p.nombre }]);
+  setDoc(doc(db, "platos", p.id), { ultimoUso: ymd(today()) }, { merge: true }).catch(() => { });
+  $("#hs-q").value = "";
+  if (p.ingredientes?.length) abrirCompra(p.ingredientes.map(g => ({ ...g, platos: [p.nombre] })), `¿Hay que comprar algo para ${p.nombre}?`, true);
+  else { abrirSlotPanel(); toast(`${p.nombre} puesto en el menú`); }
+}
+
+// ----- editor de platos -----
+function filaIng(g) {
+  const d = document.createElement("div");
+  d.className = "ing";
+  d.innerHTML = `<input class="ing-n" list="dl-productos" maxlength="60" placeholder="Ingrediente" aria-label="Ingrediente" value="${esc(g?.nombre || "")}">
+    <select class="ing-c" aria-label="Sección de la lista">${CATS.map(c => `<option value="${c.id}">${c.n}</option>`).join("")}</select>
+    <button type="button" class="x" data-quitar-ing aria-label="Quitar ingrediente">×</button>`;
+  d.querySelector("select").value = g?.categoria || "fruta";
+  $("#fp-ings").append(d);
+  return d;
+}
+function abrirPlato(p, nombreInicial) {
+  platoEdit = p || null;
+  fp.reset();
+  $("#fp-titulo").textContent = p ? "Editar plato" : "Nuevo plato";
+  fp.elements.nombre.value = p?.nombre || (nombreInicial ? cap(nombreInicial) : "");
+  fp.elements.notas.value = p?.notas || "";
+  $("#fp-ings").innerHTML = "";
+  (p?.ingredientes?.length ? p.ingredientes : [null]).forEach(filaIng);
+  $("#fp-borrar").hidden = !p;
+  $("#dl-productos").innerHTML = items.map(i => `<option value="${esc(i.name)}"></option>`).join("");
+  abrirHoja(fp);
+}
+$("#fp-mas").addEventListener("click", () => filaIng().querySelector("input").focus());
+fp.addEventListener("click", e => { const b = e.target.closest("[data-quitar-ing]"); if (b) b.parentElement.remove(); });
+// Si el ingrediente ya existe en la lista de la compra, se toma su sección.
+fp.addEventListener("input", e => {
+  if (!e.target.classList.contains("ing-n")) return;
+  const it = items.find(i => norm(i.name) === norm(e.target.value));
+  if (it?.category) e.target.parentElement.querySelector("select").value = it.category;
+});
+fp.addEventListener("submit", e => {
+  e.preventDefault();
+  const nombre = cap(fp.elements.nombre.value.trim().replace(/\s+/g, " "));
+  if (!nombre) return errorHoja(fp, "Escribe el nombre del plato.");
+  if (platos.some(x => x.id !== platoEdit?.id && norm(x.nombre) === norm(nombre))) return errorHoja(fp, "Ya hay un plato con ese nombre.");
+  const vistos = new Set(), ingredientes = [];
+  for (const r of fp.querySelectorAll(".ing")) {
+    const n = cap(r.querySelector("input").value.trim().replace(/\s+/g, " "));
+    if (!n || vistos.has(norm(n))) continue;
+    vistos.add(norm(n));
+    ingredientes.push({ nombre: n, categoria: r.querySelector("select").value });
+  }
+  const data = { nombre, ingredientes, notas: fp.elements.notas.value.trim() };
+  if (platoEdit) {
+    guardar("platos", platoEdit.id, data);
+    toast("Plato guardado");
+    return slotCtx ? abrirSlotPanel() : cerrarHoja();
+  }
+  const ref = doc(collection(db, "platos"));
+  setDoc(ref, { ...data, creadoPor: me, creadoEn: serverTimestamp(), editadoPor: me, editadoEn: serverTimestamp() }).catch(fallo);
+  if (slotCtx) elegirPlato({ id: ref.id, ...data });
+  else { toast("Plato guardado"); cerrarHoja(); }
+});
+$("#fp-borrar").addEventListener("click", () => {
+  const p = platoEdit; if (!p) return;
+  borrar("platos", p, `Plato eliminado. En los menús ya puestos se mantiene el nombre.`);
+  if (slotCtx) abrirSlotPanel(); else cerrarHoja();
+});
+
+// ----- pasar ingredientes a la lista de la compra (siempre opcional) -----
+function abrirCompra(ings, titulo, volverASlot) {
+  compraCtx = { ings, volverASlot };
+  $("#hc-titulo").textContent = titulo;
+  $("#hc-lista").innerHTML = ings.map((g, i) => {
+    const ya = items.find(x => norm(x.name) === norm(g.nombre))?.onList;
+    const detalle = [ya ? "Ya está en la lista" : catNombre(g.categoria), !volverASlot ? g.platos.join(", ") : ""].filter(Boolean).join(". ");
+    return `<li><label class="check${ya ? " ya" : ""}"><input type="checkbox" data-i="${i}"${ya ? " disabled" : ""}>
+      <span><span class="t">${esc(g.nombre)}</span><small>${esc(detalle)}</small></span></label></li>`;
+  }).join("");
+  actualizarCompra();
+  abrirHoja(hCompra);
+}
+function actualizarCompra() {
+  const n = hCompra.querySelectorAll("#hc-lista input:checked").length;
+  const libres = hCompra.querySelectorAll("#hc-lista input:not(:disabled)").length;
+  $("#hc-si").disabled = !n;
+  $("#hc-si").textContent = n ? `Añadir ${n} a la lista` : "Añadir a la lista";
+  $("#hc-no").textContent = libres ? "No hace falta" : "Hecho";
+  $("#hc-todo").hidden = !libres;
+}
+hCompra.addEventListener("change", actualizarCompra);
+$("#hc-todo").addEventListener("click", () => { hCompra.querySelectorAll("#hc-lista input:not(:disabled)").forEach(c => { c.checked = true; }); actualizarCompra(); });
+$("#hc-no").addEventListener("click", salirCompra);
+$("#hc-si").addEventListener("click", () => {
+  const elegidos = [...hCompra.querySelectorAll("#hc-lista input:checked")].map(c => compraCtx.ings[Number(c.dataset.i)]);
+  anadirALista(elegidos);
+  salirCompra();
+});
+function salirCompra() { if (compraCtx?.volverASlot && slotCtx) abrirSlotPanel(); else cerrarHoja(); }
+
+function compraSemana() {
+  const ini = st.menuSemana, mapa = new Map();
+  for (let i = 0; i < 7; i++) {
+    const m = menu.get(ymd(addDays(ini, i))) || {};
+    for (const s of Object.keys(SLOTS)) for (const e of m[s] || []) {
+      const p = platos.find(x => x.id === e.id); if (!p) continue;
+      for (const g of p.ingredientes || []) {
+        const k = norm(g.nombre);
+        if (!mapa.has(k)) mapa.set(k, { ...g, platos: [] });
+        if (!mapa.get(k).platos.includes(p.nombre)) mapa.get(k).platos.push(p.nombre);
+      }
+    }
+  }
+  const ings = [...mapa.values()].sort((a, b) => a.nombre.localeCompare(b.nombre, "es"));
+  if (!ings.length) return toast("Esta semana no hay platos con ingredientes apuntados.");
+  slotCtx = null;
+  abrirCompra(ings, "Ingredientes de la semana", false);
+}
+
+// Escribe en la colección de la lista de la compra con el mismo formato que esa app.
+function anadirALista(ings) {
+  const sello = { addedBy: auth.currentUser?.uid || "", addedByName: nombreDe(me), addedAt: serverTimestamp() };
+  let n = 0;
+  for (const g of ings) {
+    const it = items.find(x => norm(x.name) === norm(g.nombre));
+    if (it?.onList) continue;
+    n++;
+    if (it) updateDoc(doc(db, "items", it.id), { onList: true, ...sello }).catch(fallo);
+    else addDoc(collection(db, "items"), {
+      name: cap(g.nombre), category: g.categoria || "fruta", qty: "", note: `Para: ${g.platos.join(", ")}`,
+      recurring: false, freq: null, onList: true, lastBought: null, ...sello
+    }).catch(fallo);
+  }
+  if (n) toast(`${n} ${n === 1 ? "producto añadido" : "productos añadidos"} a la lista de la compra`);
+}
 
 /* =========================  escritura en Firestore  ========================= */
 // No se espera a la confirmación del servidor: sin conexión, el cambio se guarda en el móvil y se sube al volver la red.
