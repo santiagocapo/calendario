@@ -1,6 +1,6 @@
 // Service worker del calendario. Red primero; si no hay conexión, lo guardado.
 // Al cambiar algún archivo de la lista SHELL, sube la versión: calendario-v2, calendario-v3…
-const CACHE = "calendario-v1";
+const CACHE = "calendario-v2";
 const SHELL = ["./", "./index.html", "./config.js", "./manifest.json", "./icon-192.png", "./icon-512.png", "./apple-touch-icon.png"];
 
 self.addEventListener("install", e => {
@@ -22,7 +22,8 @@ self.addEventListener("fetch", e => {
   const externo = u.hostname === "www.gstatic.com" || u.hostname === "fonts.googleapis.com" || u.hostname === "fonts.gstatic.com";
   if (!propio && !externo) return;   // Firestore y el inicio de sesión van directos a la red
   e.respondWith(
-    fetch(r).then(res => {
+    // Los archivos propios se piden sin caché del navegador: así una versión nueva llega al momento.
+    fetch(propio ? new Request(r, { cache: "no-cache" }) : r).then(res => {
       if (res.ok) { const copia = res.clone(); caches.open(CACHE).then(c => c.put(r, copia)); }
       return res;
     }).catch(() => caches.match(r, { ignoreSearch: true }).then(m => m || caches.match("./index.html")))
