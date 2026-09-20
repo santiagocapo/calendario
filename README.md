@@ -2,7 +2,7 @@
 
 Calendario compartido para dos personas: citas, fechas señaladas y, más adelante, el menú semanal enlazado con la lista de la compra. Es una PWA de un solo archivo alojada en GitHub Pages que usa el mismo proyecto de Firebase que la lista de la compra.
 
-## Qué hace (versión 2)
+## Qué hace (versión 3)
 
 - **Agenda**: la hoja de hoy arriba, con el menú del día, y debajo todo lo de los próximos 60 días. El botón «Ver 60 días más» amplía el plazo.
 - **Semana**: los siete días de lunes a domingo. Tocar el número de un día abre una cita nueva en ese día.
@@ -18,6 +18,18 @@ Calendario compartido para dos personas: citas, fechas señaladas y, más adelan
 - Funciona sin conexión: los cambios se guardan en el móvil y se suben al volver la red.
 
 Colores: la primera persona de `USUARIOS` en azul, la segunda en rosa, «Los dos» en verde y las fechas señaladas con una raya discontinua roja.
+
+## Avisos
+
+- Se activan en cada dispositivo desde el menú de la inicial (arriba a la derecha), con «Activar avisos». En el iPhone solo funcionan con la app añadida a la pantalla de inicio y abierta desde allí (iOS 16.4 o posterior).
+- **Citas**: según el aviso elegido en cada una. Van a la persona indicada en «Para» o a los dos.
+- **Fechas señaladas**: a las 9:00, una semana antes y el mismo día, a los dos.
+- **Menú**: los domingos a las 19:00, si quedan comidas o cenas sin decidir para la semana siguiente.
+- Los envía la tarea `avisos.yml` de GitHub Actions cada 10 minutos, con el script `avisos/enviar.mjs`. GitHub puede retrasar la tarea unos minutos, así que un aviso «a la hora» puede llegar algo tarde.
+- La clave de la cuenta de servicio de Firebase se guarda solo como secreto `FIREBASE_SERVICE_ACCOUNT` del repositorio. **Nunca se sube como archivo.**
+- Los registros de Actions son públicos: el script solo escribe recuentos, nunca títulos, nombres ni correos.
+- Para comprobar que todo funciona: Actions, Avisos, «Run workflow» con la casilla de prueba marcada. Llega un «Aviso de prueba» a todos los dispositivos activados.
+- GitHub desactiva las tareas programadas de los repositorios públicos tras 60 días sin cambios. La tarea intenta evitarlo sola; si aun así se desactiva, GitHub avisa por correo y basta con volver a activarla en Actions.
 
 ## Menú semanal
 
@@ -41,6 +53,9 @@ El calendario reutiliza el proyecto de Firebase de la lista de la compra, así q
 
 ## Datos en Firestore
 
+- `dispositivos`: uno por dispositivo con avisos, con `token`, `usuario`, `dispositivo` y `actualizado`.
+- `sistema/avisos`: hora de la última revisión de avisos (solo la usa el script).
+
 - `eventos`: `titulo`, `para` (correo o `ambos`), `fecha` (`AAAA-MM-DD`), `hora` y `horaFin` (`HH:MM`, vacías si es de día completo), `fechaFin` (último día si dura varios), `lugar`, `notas`, `repite` (`no`, `semana`, `mes`, `anio`), `repiteHasta`, `excepciones` (días anulados de la serie), `serie` (en una cita cambiada solo un día, la serie de la que sale), `aviso`, `creadoPor`, `creadoEn`, `editadoPor`, `editadoEn`.
 - `platos`: `nombre`, `ingredientes` (lista de `{nombre, categoria}`, con los identificadores de sección de la lista de la compra), `notas`, `ultimoUso`.
 - `menu`: un documento por día con el identificador `AAAA-MM-DD` y los campos `comida` y `cena`, cada uno una lista de `{id, nombre}` del plato.
@@ -57,8 +72,7 @@ Las fechas se guardan como texto en hora local de España, así no hay desfases 
 
 ## Próximas fases
 
-1. **Notificaciones push** con una tarea programada gratuita de GitHub Actions, sin plan de pago en Firebase. El campo `aviso` de cada cita ya se está guardando para entonces.
-2. **Enlace de suscripción** (.ics) de solo lectura para ver lo compartido en Google Calendar.
+1. **Enlace de suscripción** (.ics) de solo lectura para ver lo compartido en Google Calendar.
 
 ## Límites conocidos
 

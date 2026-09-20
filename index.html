@@ -203,8 +203,12 @@ textarea{resize:vertical}
 .saltar input{position:absolute;inset:0;opacity:0;width:100%;height:100%;cursor:pointer;padding:0;border:0}
 .mas{display:block;margin:0 auto 1rem}
 .mini .a{display:block;font-size:.7rem;color:var(--muted);padding-bottom:.2rem}
-.taco-menu{text-align:left;margin:.75rem 0 0;padding-top:.6rem;border-top:1px solid var(--line);font-size:.9rem}
-.taco-menu span{color:var(--muted)}
+.taco-menu{text-align:left;margin:.75rem 0 0;padding-top:.5rem;border-top:1px solid var(--line)}
+.menu-dia{display:flex;flex-wrap:wrap;gap:0 1.1rem;font-size:.9rem}
+.menu-dia button{border:0;background:none;padding:.3rem 0;text-align:left;font-weight:600}
+.menu-dia .l{color:var(--muted);font-weight:400}
+.menu-dia .sin{color:var(--muted);font-weight:400}
+.dia .menu-dia{margin:-.1rem 0 .1rem}
 .btn.ancho{display:block;width:calc(100% - 32px);margin:0 16px 1rem}
 .md{display:grid;grid-template-columns:3.4rem 1fr;gap:.75rem;padding:.55rem 16px;border-top:1px solid var(--line)}
 .md.hoy .sd-fecha{background:var(--ink);color:var(--bg)}
@@ -238,6 +242,8 @@ textarea{resize:vertical}
 .check .t{display:block;font-weight:600}
 .check small{display:block;color:var(--muted);font-size:.85rem}
 .check.ya{opacity:.55}
+.avisos-cfg{margin-top:1rem;padding-top:.9rem;border-top:1px solid var(--line);display:grid;gap:.4rem;justify-items:start}
+.avisos-cfg p{margin:0}
 .serie-aviso{margin:0;padding:.6rem .75rem;border-radius:10px;background:var(--bg);font-size:.875rem;color:var(--muted)}
 #menu p{margin:0 0 .25rem}
 #menu .acciones{margin-top:1rem}
@@ -321,7 +327,7 @@ textarea{resize:vertical}
       <label class="campo" id="fe-hasta"><span>Hasta (opcional)</span><input type="date" name="repiteHasta"></label>
     </div>
     <label class="campo"><span>Aviso</span><select name="aviso"></select>
-      <small>Los avisos llegarán cuando activemos las notificaciones.</small></label>
+      <small>Llega a los dispositivos donde se hayan activado los avisos (menú de tu inicial, arriba).</small></label>
     <label class="campo"><span>Notas (opcional)</span><textarea name="notas" rows="2" maxlength="1000"></textarea></label>
     <p class="serie-aviso" id="fe-serie" hidden>Esta cita se repite. Al guardar o eliminar podrás elegir si afecta solo a este día, a este y los siguientes o a toda la serie.</p>
     <p class="err" hidden></p>
@@ -397,6 +403,11 @@ textarea{resize:vertical}
 <dialog id="menu" aria-label="Cuenta">
   <p><strong id="menu-nombre"></strong></p>
   <p class="ayuda" id="menu-email"></p>
+  <div class="avisos-cfg">
+    <p><strong>Avisos en este dispositivo</strong></p>
+    <p class="ayuda" id="av-estado"></p>
+    <button type="button" class="btn" id="av-btn" hidden></button>
+  </div>
   <div class="acciones">
     <button type="button" class="btn" id="menu-cerrar">Volver</button>
     <button type="button" class="btn primary" id="btn-salir">Cerrar sesión</button>
@@ -421,6 +432,7 @@ textarea{resize:vertical}
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.2/firebase-app.js";
 import { getAuth, onAuthStateChanged, GoogleAuthProvider, signInWithPopup, signInWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/11.0.2/firebase-auth.js";
+import { getMessaging, getToken, deleteToken, isSupported } from "https://www.gstatic.com/firebasejs/11.0.2/firebase-messaging.js";
 import { initializeFirestore, persistentLocalCache, persistentMultipleTabManager, collection, onSnapshot, addDoc, setDoc, updateDoc, doc, deleteDoc, serverTimestamp, query, where, documentId } from "https://www.gstatic.com/firebasejs/11.0.2/firebase-firestore.js";
 
 /* =========================  utilidades de fecha  ========================= */
@@ -447,7 +459,7 @@ const AVISOS_DIA = [["", "Sin aviso"], ["dia9", "El mismo día a las 9:00"], ["v
 const REPITE = { semana: "Cada semana", mes: "Cada mes", anio: "Cada año" };
 
 /* =========================  estado  ========================= */
-let firebaseConfig, USUARIOS = {}, PERSONAS = [], APPS = {};
+let firebaseConfig, USUARIOS = {}, PERSONAS = [], APPS = {}, VAPID = "", appFb = null, mensajeria = null;
 let auth, db, me = null, eventos = [], fechas = [], escuchas = [];
 const st = { vista: "agenda", filtro: "todo", semana: null, mes: null, dia: null, menuSemana: null, dias: 60, q: "" };
 let menu = new Map(), platos = [], items = [], menuDesde = null, unsubMenu = null;
@@ -479,13 +491,15 @@ async function boot() {
     firebaseConfig = cfg.firebaseConfig;
     USUARIOS = Object.fromEntries(Object.entries(cfg.USUARIOS || {}).map(([k, v]) => [k.toLowerCase(), v]));
     APPS = cfg.APPS || {};
+    VAPID = cfg.VAPID || "";
   } catch { return mostrar("#v-config"); }
   if (APPS.compra) { $("#btn-compra").href = APPS.compra; $("#btn-compra").hidden = false; }
   if (!firebaseConfig?.apiKey || firebaseConfig.apiKey.startsWith("PEGA")) return mostrar("#v-config");
   PERSONAS = Object.entries(USUARIOS).slice(0, 2).map(([email, nombre], i) => ({ email, nombre, color: `var(--p${i + 1})` }));
 
   // App con nombre propio: su caché y su sesión no chocan con la lista de la compra (mismo dominio).
-  const app = initializeApp(firebaseConfig, "calendario");
+  const app = appFb = initializeApp(firebaseConfig, "calendario");
+  try { if (VAPID && "serviceWorker" in navigator && await isSupported()) mensajeria = getMessaging(app); } catch { }
   auth = getAuth(app);
   db = initializeFirestore(app, { localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() }) });
 
@@ -504,6 +518,7 @@ async function boot() {
     $("#btn-cuenta").style.setProperty("--c", p?.color || "var(--ink)");
     mostrar("#v-app");
     render();
+    refrescarAviso();
   });
 }
 
@@ -645,19 +660,17 @@ const flecha = izq => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor
 
 function vAgenda() {
   const hoy = today(), N = st.dias, mapa = recoger(hoy, addDays(hoy, N)), lHoy = mapa.get(ymd(hoy)) || [];
-  const mHoy = menu.get(ymd(hoy)) || {};
-  const menuHoy = Object.keys(SLOTS).filter(k => mHoy[k]?.length)
-    .map(k => `<span>${SLOTS[k]}:</span> ${esc(mHoy[k].map(nombrePlato).join(", "))}`).join(". ");
+
   let h = `<section class="taco${hoy.getDay() === 0 ? " dom" : ""}" aria-label="Hoy">
     <div class="taco-banda"><span class="aro"></span><span>${cap(F_MES.format(hoy))} ${hoy.getFullYear()}</span><span class="aro"></span></div>
     <div class="taco-cuerpo"><div class="taco-num">${hoy.getDate()}</div><div class="taco-dia">${F_WD.format(hoy)}</div>
     ${lHoy.length ? htmlLista(lHoy) : `<p class="vacio">Nada apuntado para hoy.</p>`}
-    ${menuHoy ? `<p class="taco-menu">${menuHoy}.</p>` : ""}</div></section>`;
+    <div class="taco-menu">${htmlMenuDia(ymd(hoy), true)}</div></div></section>`;
   let dias = "";
   for (let i = 1; i <= N; i++) {
-    const d = addDays(hoy, i), l = mapa.get(ymd(d));
-    if (!l) continue;
-    dias += `<section class="dia"><h2${d.getDay() === 0 ? ' class="dom"' : ""}>${i === 1 ? "Mañana, " : ""}${F_DIA.format(d)}</h2>${htmlLista(l)}</section>`;
+    const d = addDays(hoy, i), k = ymd(d), l = mapa.get(k), m = htmlMenuDia(k, false);
+    if (!l && !m) continue;
+    dias += `<section class="dia"><h2${d.getDay() === 0 ? ' class="dom"' : ""}>${i === 1 ? "Mañana, " : ""}${F_DIA.format(d)}</h2>${m}${l ? htmlLista(l) : ""}</section>`;
   }
   return h + `<h2 class="sec">Próximos ${N} días</h2>` +
     (dias || `<p class="vacio" style="margin:0 16px 1rem">No hay nada en los próximos ${N} días. Pulsa + para añadir una cita.</p>`) +
@@ -725,6 +738,15 @@ function vFechas() {
   return h + `</ul>`;
 }
 
+// Menú de un día. En la hoja de hoy se muestran siempre las dos comidas (para poder decidirlas);
+// en los días siguientes, solo si hay algo puesto.
+function htmlMenuDia(k, siempre) {
+  const m = menu.get(k) || {};
+  const hay = Object.keys(SLOTS).some(s => m[s]?.length);
+  if (!hay && !siempre) return "";
+  return `<div class="menu-dia">${Object.entries(SLOTS).filter(([s]) => siempre || m[s]?.length).map(([s, t]) =>
+    `<button type="button" data-slot="${s}" data-f="${k}"><span class="l">${t}:</span> ${m[s]?.length ? esc(m[s].map(nombrePlato).join(", ")) : `<span class="sin">sin decidir</span>`}</button>`).join("")}</div>`;
+}
 const nombrePlato = e => platos.find(p => p.id === e.id)?.nombre || e.nombre;
 const rangoSemana = (ini, fin) => ini.getMonth() === fin.getMonth()
   ? `${ini.getDate()} – ${fin.getDate()} de ${F_MES.format(fin)}`
@@ -863,8 +885,69 @@ $("#fab").addEventListener("click", () => {
   abrirEvento(null, ymd(dia));
 });
 $("#btn-cuenta").addEventListener("click", () => {
-  $("#menu-nombre").textContent = nombreDe(me); $("#menu-email").textContent = me; $("#menu").showModal();
+  $("#menu-nombre").textContent = nombreDe(me); $("#menu-email").textContent = me;
+  estadoAvisos();
+  $("#menu").showModal();
 });
+
+/* =========================  avisos (notificaciones push)  ========================= */
+const leerToken = () => { try { return localStorage.getItem("avisoToken"); } catch { return null; } };
+const guardarToken = t => { try { t ? localStorage.setItem("avisoToken", t) : localStorage.removeItem("avisoToken"); } catch { } };
+const esIOS = /iPhone|iPad|iPod/.test(navigator.userAgent);
+const instalada = matchMedia("(display-mode: standalone)").matches || navigator.standalone === true;
+const nombreDispositivo = () => esIOS ? "iPhone" : /Android/.test(navigator.userAgent) ? "Android" : "Ordenador";
+
+function estadoAvisos() {
+  const est = $("#av-estado"), btn = $("#av-btn");
+  btn.hidden = true;
+  if (!VAPID) return est.textContent = "Los avisos todavía no están configurados (falta VAPID en config.js).";
+  if (esIOS && !instalada) return est.textContent = "En el iPhone, los avisos solo funcionan con la app añadida a la pantalla de inicio y abierta desde allí.";
+  if (!mensajeria || !("Notification" in window)) return est.textContent = "Este navegador no admite avisos.";
+  if (Notification.permission === "denied") return est.textContent = "Los avisos están bloqueados para esta app. Permítelos en los ajustes del navegador o del móvil.";
+  const activo = Notification.permission === "granted" && leerToken();
+  est.textContent = activo ? "Activados. Aquí llegarán las citas, los cumpleaños y el recordatorio del menú."
+                           : "Desactivados. Actívalos para recibir aquí las citas, los cumpleaños y el recordatorio del menú.";
+  btn.textContent = activo ? "Desactivar avisos" : "Activar avisos";
+  btn.hidden = false;
+}
+
+async function registrarToken() {
+  const reg = await navigator.serviceWorker.ready;
+  const token = await getToken(mensajeria, { vapidKey: VAPID, serviceWorkerRegistration: reg });
+  const anterior = leerToken();
+  if (anterior && anterior !== token) deleteDoc(doc(db, "dispositivos", anterior)).catch(() => { });
+  await setDoc(doc(db, "dispositivos", token), { token, usuario: me, dispositivo: nombreDispositivo(), actualizado: serverTimestamp() });
+  guardarToken(token);
+}
+
+$("#av-btn").addEventListener("click", async () => {
+  const btn = $("#av-btn");
+  btn.disabled = true;
+  try {
+    if (Notification.permission === "granted" && leerToken()) {
+      const t = leerToken();
+      guardarToken(null);
+      await deleteDoc(doc(db, "dispositivos", t)).catch(() => { });
+      await deleteToken(mensajeria).catch(() => { });
+      toast("Avisos desactivados en este dispositivo");
+    } else {
+      // El permiso se pide nada más pulsar: el iPhone lo exige así.
+      const permiso = await Notification.requestPermission();
+      if (permiso !== "granted") { toast("Sin permiso no se pueden enviar avisos"); }
+      else { await registrarToken(); toast("Avisos activados en este dispositivo"); }
+    }
+  } catch (e) {
+    toast("No se han podido activar los avisos: " + (e.code || e.message));
+  }
+  btn.disabled = false;
+  estadoAvisos();
+});
+
+// Al abrir la app se renueva el registro del dispositivo (los identificadores caducan de vez en cuando).
+function refrescarAviso() {
+  if (!mensajeria || !leerToken() || !("Notification" in window) || Notification.permission !== "granted") return;
+  registrarToken().catch(() => { });
+}
 $("#menu-cerrar").addEventListener("click", () => $("#menu").close());
 $("#btn-salir").addEventListener("click", () => { $("#menu").close(); signOut(auth); });
 document.addEventListener("visibilitychange", () => { if (!document.hidden) render(); });   // cambio de día con la app abierta

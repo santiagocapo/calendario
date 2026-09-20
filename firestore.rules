@@ -1,0 +1,25 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Solo estas dos cuentas pueden leer y escribir. Correos en minúsculas.
+    function esDeCasa() {
+      return request.auth != null &&
+        request.auth.token.email.lower() in ['tu-correo@gmail.com', 'correo-de-olimpia@gmail.com'];
+    }
+
+    // --- Lista de la compra ---
+    match /items/{id}   { allow read, write: if esDeCasa(); }
+    match /compras/{id} { allow read, write: if esDeCasa(); }
+
+    // --- Calendario ---
+    match /eventos/{id} { allow read, write: if esDeCasa(); }
+    match /fechas/{id}  { allow read, write: if esDeCasa(); }
+
+    // --- Menú semanal ---
+    match /platos/{id}  { allow read, write: if esDeCasa(); }
+    match /menu/{id}    { allow read, write: if esDeCasa(); }
+
+    // --- Avisos: un documento por móvil u ordenador con los avisos activados ---
+    match /dispositivos/{id} { allow read, write: if esDeCasa(); }
+  }
+}
