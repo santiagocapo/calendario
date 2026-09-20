@@ -1,18 +1,18 @@
-// Configuración del calendario. Es la MISMA que la de la lista de la compra:
-// lo más fácil es copiar aquí el config.js de ese repositorio tal cual.
+// Configuración de «La compra». Este archivo solo se sube una vez:
+// las futuras versiones de index.html no lo tocan.
 
+// 1) Copia aquí los valores de firebaseConfig que ya pegaste en tu index.html anterior.
 export const firebaseConfig = {
-  apiKey: "PEGA_AQUI",
-  authDomain: "",
-  projectId: "",
-  storageBucket: "",
-  messagingSenderId: "",
-  appId: ""
+  apiKey: "AIzaSyDWeQwDQQKeDEtxUGiPQN-N_Ge3HzAJY0o",
+  authDomain: "lista-de-la-compra-fd066.firebaseapp.com",
+  projectId: "lista-de-la-compra-fd066",
+  storageBucket: "lista-de-la-compra-fd066.firebasestorage.app",
+  messagingSenderId: "841838013657",
+  appId: "1:841838013657:web:8cadb0867555de9daf22c8"
 };
 
-// Los dos correos (los mismos que en las reglas de Firestore) y el nombre que se muestra.
-// El primero sale en azul y el segundo en rosa; «Los dos», en verde.
+// 2) Los dos correos (los mismos que en las reglas de Firestore) y el nombre que se muestra.
 export const USUARIOS = {
-  "tu-correo@gmail.com": "Santi",
-  "correo-de-olimpia@gmail.com": "Olimpia"
+  "santiagocapo@gmail.com": "Santi",
+  "olimpiamadridtaverner@gmail.com": "Olimpia"
 };
