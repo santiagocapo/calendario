@@ -1,4 +1,5 @@
 name: Avisos
+# Cada 10 minutos: importa calendarios externos (cada media hora) y envía los avisos.
 
 on:
   schedule:
@@ -30,6 +31,14 @@ jobs:
       - name: Instalar
         working-directory: avisos
         run: npm install --no-audit --no-fund --silent
+      - name: Importar calendarios externos
+        # Si falla un enlace, los avisos se envían igualmente.
+        continue-on-error: true
+        run: node avisos/importar.mjs
+        env:
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+          CALENDARIOS_EXTERNOS: ${{ secrets.CALENDARIOS_EXTERNOS }}
+          FORZAR: ${{ github.event_name == 'workflow_dispatch' }}
       - name: Enviar avisos
         run: node avisos/enviar.mjs
         env:
