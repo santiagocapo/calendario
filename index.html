@@ -186,7 +186,13 @@ textarea{resize:vertical}
 .acciones{display:flex;justify-content:space-between;align-items:center;gap:1rem}
 .acciones .primary{margin-left:auto;min-width:8rem}
 
-#menu{border-radius:14px;padding:18px;width:min(320px,90vw)}
+#menu,#alcance{border-radius:14px;padding:18px;width:min(340px,90vw)}
+#alcance h2{font:700 1.5rem/1.1 var(--display);margin:0 0 .35rem}
+#alcance p{margin:0 0 1rem;color:var(--muted)}
+.alc-ops{display:grid;gap:.5rem}
+.alc-ops .btn{width:100%}
+.alc-ops .cancelar{border:0;background:none;color:var(--muted);font-weight:500}
+.serie-aviso{margin:0;padding:.6rem .75rem;border-radius:10px;background:var(--bg);font-size:.875rem;color:var(--muted)}
 #menu p{margin:0 0 .25rem}
 #menu .acciones{margin-top:1rem}
 
@@ -266,6 +272,7 @@ textarea{resize:vertical}
     <label class="campo"><span>Aviso</span><select name="aviso"></select>
       <small>Los avisos llegarán cuando activemos las notificaciones.</small></label>
     <label class="campo"><span>Notas (opcional)</span><textarea name="notas" rows="2" maxlength="1000"></textarea></label>
+    <p class="serie-aviso" id="fe-serie" hidden>Esta cita se repite. Al guardar o eliminar podrás elegir si afecta solo a este día, a este y los siguientes o a toda la serie.</p>
     <p class="err" hidden></p>
     <p class="autor" id="fe-autor"></p>
     <div class="acciones">
@@ -306,6 +313,19 @@ textarea{resize:vertical}
     <button type="button" class="btn" id="menu-cerrar">Volver</button>
     <button type="button" class="btn primary" id="btn-salir">Cerrar sesión</button>
   </div>
+</dialog>
+
+<dialog id="alcance" aria-labelledby="alc-t">
+  <form method="dialog">
+    <h2 id="alc-t">Cita que se repite</h2>
+    <p id="alc-p"></p>
+    <div class="alc-ops">
+      <button class="btn" value="uno">Solo este día</button>
+      <button class="btn" value="siguientes">Este día y los siguientes</button>
+      <button class="btn" value="todas">Todos los días de la serie</button>
+      <button class="btn cancelar" value="">Cancelar</button>
+    </div>
+  </form>
 </dialog>
 
 <div class="toast" id="toast" role="status" hidden><span></span><button type="button" hidden>Deshacer</button></div>
@@ -419,8 +439,13 @@ $("#f-login").addEventListener("submit", e => {
 });
 
 /* =========================  cálculo de apariciones  ========================= */
-// Días en que empieza un evento (con repeticiones) entre desde y hasta, ambos incluidos.
+// Días en que empieza un evento (con repeticiones) entre desde y hasta, ambos incluidos,
+// quitando los días anulados de la serie («excepciones»).
 function inicios(ev, desde, hasta) {
+  const ex = new Set(ev.excepciones || []);
+  return iniciosSerie(ev, desde, hasta).filter(d => !ex.has(ymd(d)));
+}
+function iniciosSerie(ev, desde, hasta) {
   const s = parse(ev.fecha), out = [];
   if (!ev.repite || ev.repite === "no") { if (s >= desde && s <= hasta) out.push(s); return out; }
   let fin = hasta;
@@ -460,7 +485,7 @@ function recoger(desde, hasta) {
     for (const ini of inicios(ev, addDays(desde, -dur), hasta)) {
       for (let i = 0; i <= dur; i++) {
         const d = addDays(ini, i);
-        if (d >= desde && d <= hasta) poner(ymd(d), { tipo: "evento", ev, dia: i + 1, dias: dur + 1 });
+        if (d >= desde && d <= hasta) poner(ymd(d), { tipo: "evento", ev, ini, dia: i + 1, dias: dur + 1 });
       }
     }
   }
@@ -494,7 +519,7 @@ function htmlEntrada(e) {
     e.dias > 1 ? `<span>Día ${e.dia} de ${e.dias}</span>` : "",
     ev.repite && ev.repite !== "no" ? `<span>${REPITE[ev.repite] || ""}</span>` : ""
   ].join("");
-  return `<li><button type="button" class="ent" data-k="evento" data-id="${esc(ev.id)}" style="--c:${c}">
+  return `<li><button type="button" class="ent" data-k="evento" data-id="${esc(ev.id)}" data-occ="${ymd(e.ini)}" style="--c:${c}">
     <span class="hora">${hora}</span><span class="barra"></span>
     <span><span class="t">${esc(ev.titulo)}</span><span class="meta">${meta}</span></span></button></li>`;
 }
@@ -599,7 +624,7 @@ $(".tabs").addEventListener("click", e => {
 $("#main").addEventListener("click", e => {
   const t = e.target.closest("[data-k],[data-nav],[data-dia],[data-nuevo],[data-hoy]"); if (!t) return;
   const hoy = today();
-  if (t.dataset.k === "evento") { const ev = eventos.find(x => x.id === t.dataset.id); if (ev) abrirEvento(ev); }
+  if (t.dataset.k === "evento") { const ev = eventos.find(x => x.id === t.dataset.id); if (ev) abrirEvento(ev, null, t.dataset.occ); }
   else if (t.dataset.k === "fecha") { const f = fechas.find(x => x.id === t.dataset.id); if (f) abrirFecha(f); }
   else if (t.dataset.nuevo) abrirEvento(null, t.dataset.nuevo);
   else if (t.dataset.dia) { st.dia = parse(t.dataset.dia); render(); }
@@ -649,8 +674,13 @@ const autoria = x => {
 };
 
 // ----- citas -----
-function abrirEvento(ev, fecha) {
-  editando = ev ? { col: "eventos", item: ev } : null;
+const esSerie = ev => !!ev && !!ev.repite && ev.repite !== "no";
+const desplazar = (s, n) => s ? ymd(addDays(parse(s), n)) : s;
+
+// occ: día concreto de la serie que se ha tocado (para citas que se repiten)
+function abrirEvento(ev, fecha, occ) {
+  occ = ev ? (esSerie(ev) && occ ? occ : ev.fecha) : null;
+  editando = ev ? { col: "eventos", item: ev, occ } : null;
   fe.reset();
   const f = fe.elements;
   $("#fe-titulo").textContent = ev ? "Editar cita" : "Nueva cita";
@@ -661,17 +691,18 @@ function abrirEvento(ev, fecha) {
   [...fe.querySelectorAll("input[name=para]")].forEach(r => { r.checked = r.value === para; });
   if (!fe.querySelector("input[name=para]:checked")) fe.querySelector("input[name=para][value=ambos]").checked = true;
   f.titulo.value = ev?.titulo || "";
-  f.fecha.value = ev?.fecha || fecha || ymd(today());
+  f.fecha.value = occ || fecha || ymd(today());
   f.todoDia.checked = ev ? !ev.hora : false;
   f.hora.value = ev?.hora || "";
   f.horaFin.value = ev?.horaFin || "";
-  f.fechaFin.value = ev?.fechaFin || "";
+  f.fechaFin.value = ev?.fechaFin ? desplazar(occ, diffDays(parse(ev.fecha), parse(ev.fechaFin))) : "";
   f.lugar.value = ev?.lugar || "";
   f.notas.value = ev?.notas || "";
   f.repite.value = ev?.repite || "no";
   f.repiteHasta.value = ev?.repiteHasta || "";
   ajustarEvento(ev ? (ev.aviso ?? "") : null);
   $("#fe-borrar").hidden = !ev;
+  $("#fe-serie").hidden = !esSerie(ev);
   $("#fe-autor").textContent = ev ? autoria(ev) : "";
   abrirHoja(fe);
 }
@@ -689,7 +720,7 @@ function ajustarEvento(aviso) {
 }
 fe.addEventListener("change", e => { if (["todoDia", "repite"].includes(e.target.name)) ajustarEvento(undefined); });
 
-fe.addEventListener("submit", e => {
+fe.addEventListener("submit", async e => {
   e.preventDefault();
   const f = fe.elements, todo = f.todoDia.checked;
   const titulo = f.titulo.value.trim(), fecha = f.fecha.value, hora = f.hora.value, horaFin = f.horaFin.value;
@@ -711,14 +742,61 @@ fe.addEventListener("submit", e => {
     repite, repiteHasta: repite !== "no" && repiteHasta ? repiteHasta : null,
     aviso: f.aviso.value || null
   };
-  guardar("eventos", editando?.item.id, data);
+  const msg = await guardarEvento(editando, data);
+  if (!msg) return;               // se canceló la elección
   cerrarHoja();
-  toast("Cita guardada");
+  toast(msg);
 });
-$("#fe-borrar").addEventListener("click", () => {
-  const it = editando?.item; if (!it) return;
+
+// Pregunta a qué días de la serie afecta. Devuelve "uno", "siguientes", "todas" o null.
+function preguntarAlcance(accion) {
+  const d = $("#alcance");
+  $("#alc-p").textContent = accion === "eliminar" ? "¿Qué días quieres eliminar?" : "¿A qué días se aplica el cambio?";
+  d.returnValue = "";
+  d.showModal();
+  return new Promise(res => d.addEventListener("close", () => res(d.returnValue || null), { once: true }));
+}
+
+async function guardarEvento(ed, data) {
+  if (!ed) { guardar("eventos", null, data); return "Cita guardada"; }
+  const ev = ed.item, occ = ed.occ;
+  if (!esSerie(ev)) { guardar("eventos", ev.id, data); return "Cita guardada"; }
+  const alc = await preguntarAlcance("guardar");
+  if (!alc) return null;
+  const delta = diffDays(parse(occ), parse(data.fecha));      // si se ha movido el día, cuánto
+  const ex = ev.excepciones || [];
+  if (alc === "todas" || (alc === "siguientes" && occ === ev.fecha)) {
+    const ini = desplazar(ev.fecha, delta);
+    const dur = data.fechaFin ? diffDays(parse(data.fecha), parse(data.fechaFin)) : 0;
+    guardar("eventos", ev.id, { ...data, fecha: ini, fechaFin: data.fechaFin ? desplazar(ini, dur) : null, excepciones: ex.map(x => desplazar(x, delta)) });
+    return "Cambiada toda la serie";
+  }
+  if (alc === "uno") {
+    guardar("eventos", ev.id, { excepciones: [...new Set([...ex, occ])] });
+    guardar("eventos", null, { ...data, repite: "no", repiteHasta: null, serie: ev.id });
+    return "Cambiado solo este día";
+  }
+  // Este y los siguientes: la serie antigua acaba el día anterior y empieza una nueva.
+  guardar("eventos", ev.id, { repiteHasta: desplazar(occ, -1) });
+  guardar("eventos", null, { ...data, excepciones: ex.filter(x => x > occ).map(x => desplazar(x, delta)) });
+  return "Cambiado desde este día";
+}
+
+$("#fe-borrar").addEventListener("click", async () => {
+  const ed = editando; if (!ed) return;
+  const ev = ed.item, occ = ed.occ;
+  if (!esSerie(ev)) { cerrarHoja(); return borrar("eventos", ev, "Cita eliminada"); }
+  const alc = await preguntarAlcance("eliminar");
+  if (!alc) return;
   cerrarHoja();
-  borrar("eventos", it, it.repite && it.repite !== "no" ? "Cita eliminada con todas sus repeticiones" : "Cita eliminada");
+  if (alc === "todas" || (alc === "siguientes" && occ === ev.fecha)) return borrar("eventos", ev, "Serie eliminada");
+  const { id, ...antes } = ev;
+  const cambio = alc === "uno"
+    ? { excepciones: [...new Set([...(ev.excepciones || []), occ])] }
+    : { repiteHasta: desplazar(occ, -1) };
+  setDoc(doc(db, "eventos", id), { ...cambio, editadoPor: me, editadoEn: serverTimestamp() }, { merge: true }).catch(fallo);
+  toast(alc === "uno" ? "Eliminada solo este día" : "Eliminada desde este día",
+        () => setDoc(doc(db, "eventos", id), antes).catch(fallo));
 });
 
 // ----- fechas señaladas -----

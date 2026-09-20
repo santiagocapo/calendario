@@ -9,6 +9,7 @@ Calendario compartido para dos personas: citas, fechas señaladas y, más adelan
 - **Mes**: cuadrícula con un punto de color por cada persona que tiene algo ese día; al tocar un día se ve su lista debajo.
 - **Fechas**: cumpleaños, aniversarios y otras fechas que se repiten cada año, ordenadas por la más cercana. Con el año de nacimiento calcula los que cumple.
 - **Citas**: para una persona o para los dos, con hora o de día completo, de uno o varios días (vacaciones), con repetición semanal, mensual o anual y fecha de fin opcional.
+- **Citas que se repiten**: al guardar o eliminar, la app pregunta si afecta solo a ese día, a ese día y los siguientes o a toda la serie.
 - **Filtro** arriba: Todo, solo lo de uno (incluye lo común) o solo lo del otro.
 - Cada cita recuerda quién la añadió y quién la cambió por última vez. Al eliminar hay 6 segundos para deshacer.
 - Funciona sin conexión: los cambios se guardan en el móvil y se suben al volver la red.
@@ -23,11 +24,12 @@ El calendario reutiliza el proyecto de Firebase de la lista de la compra, así q
 2. **`config.js`**: sustitúyelo por el `config.js` del repositorio de la lista de la compra, tal cual. Mismo proyecto y mismos correos.
 3. **Reglas de Firestore**: en la consola de Firebase, Firestore, pestaña Reglas, añade los bloques del calendario y del menú que hay en `firestore.rules`. Conserva los de `items` y `compras` y pon los correos reales en minúsculas. Publica.
 4. **GitHub Pages**: Settings, Pages, rama `main`, carpeta raíz. La dirección será `https://usuario.github.io/calendario/`. No hace falta añadir ningún dominio en Firebase: es el mismo `usuario.github.io` que ya está autorizado para la lista.
-5. **En el móvil**: en iPhone, Safari, Compartir, «Añadir a pantalla de inicio»; en Android, Chrome, menú ⋮, «Instalar aplicación». Hay que iniciar sesión una vez: el calendario lleva su propia sesión para no interferir con la lista.
+5. **Clave restringida**: si en Google Cloud Console restringiste la clave de Firebase a una ruta concreta de la lista (por ejemplo `https://usuario.github.io/lista-compra/*`), añade también `https://usuario.github.io/calendario/*`. Si la restringiste a `https://usuario.github.io/*`, no hay que tocar nada.
+6. **En el móvil**: en iPhone, Safari, Compartir, «Añadir a pantalla de inicio»; en Android, Chrome, menú ⋮, «Instalar aplicación». Hay que iniciar sesión una vez: el calendario lleva su propia sesión para no interferir con la lista.
 
 ## Datos en Firestore
 
-- `eventos`: `titulo`, `para` (correo o `ambos`), `fecha` (`AAAA-MM-DD`), `hora` y `horaFin` (`HH:MM`, vacías si es de día completo), `fechaFin` (último día si dura varios), `lugar`, `notas`, `repite` (`no`, `semana`, `mes`, `anio`), `repiteHasta`, `aviso`, `creadoPor`, `creadoEn`, `editadoPor`, `editadoEn`.
+- `eventos`: `titulo`, `para` (correo o `ambos`), `fecha` (`AAAA-MM-DD`), `hora` y `horaFin` (`HH:MM`, vacías si es de día completo), `fechaFin` (último día si dura varios), `lugar`, `notas`, `repite` (`no`, `semana`, `mes`, `anio`), `repiteHasta`, `excepciones` (días anulados de la serie), `serie` (en una cita cambiada solo un día, la serie de la que sale), `aviso`, `creadoPor`, `creadoEn`, `editadoPor`, `editadoEn`.
 - `fechas`: `tipo` (`cumple`, `aniversario`, `otra`), `nombre`, `dia`, `mes`, `anio` (opcional), `notas` y los mismos campos de autoría.
 
 Las fechas se guardan como texto en hora local de España, así no hay desfases de zona horaria.
@@ -47,6 +49,5 @@ Las fechas se guardan como texto en hora local de España, así no hay desfases 
 ## Límites conocidos
 
 - **Google en iPhone**: dentro de la app instalada, Apple puede bloquear la ventana de Google. Entra con correo y contraseña; la sesión queda guardada.
-- **Repeticiones**: editar o eliminar una cita repetida afecta a toda la serie. Para saltarse un día concreto, de momento, hay que usar la fecha «Hasta» y crear otra serie.
 - **Lecturas**: la app descarga todas las citas al abrirse. Con el uso de dos personas queda muy por debajo del límite gratuito de 50.000 lecturas diarias.
 - El repositorio es público: no escribas correos ni datos personales en este README ni en los *commits*.
