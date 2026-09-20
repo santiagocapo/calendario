@@ -1,0 +1,53 @@
+name: Avisos
+# Cada 10 minutos: importa calendarios externos (cada media hora) y envía los avisos.
+
+on:
+  schedule:
+    - cron: "*/10 * * * *"   # cada 10 minutos (GitHub puede retrasarlo unos minutos)
+  workflow_dispatch:
+    inputs:
+      prueba:
+        description: "Enviar un aviso de prueba a todos los dispositivos activados"
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+  actions: write
+
+concurrency:
+  group: avisos
+  cancel-in-progress: false
+
+jobs:
+  enviar:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+      - name: Instalar
+        working-directory: avisos
+        run: npm install --no-audit --no-fund --silent
+      - name: Importar calendarios externos
+        # Si falla un enlace, los avisos se envían igualmente.
+        continue-on-error: true
+        run: node avisos/importar.mjs
+        env:
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+          CALENDARIOS_EXTERNOS: ${{ secrets.CALENDARIOS_EXTERNOS }}
+          FORZAR: ${{ github.event_name == 'workflow_dispatch' }}
+      - name: Enviar avisos
+        run: node avisos/enviar.mjs
+        env:
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+          PRUEBA: ${{ inputs.prueba }}
+      - name: Mantener activa la programación
+        # GitHub desactiva las tareas programadas de los repositorios públicos sin actividad en 60 días.
+        if: github.event_name == 'schedule'
+        continue-on-error: true
+        run: gh api -X PUT "repos/${{ github.repository }}/actions/workflows/avisos.yml/enable" --silent
+        env:
+          GH_TOKEN: ${{ github.token }}
