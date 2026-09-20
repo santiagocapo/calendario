@@ -13,6 +13,7 @@ Calendario compartido para dos personas: citas, fechas señaladas y, más adelan
 - **Fechas**: cumpleaños, aniversarios y otras fechas que se repiten cada año, ordenadas por la más cercana. Con el año de nacimiento calcula los que cumple.
 - **Citas**: para una persona o para los dos, con hora o de día completo, de uno o varios días (vacaciones), con repetición semanal, mensual o anual y fecha de fin opcional.
 - **Citas que se repiten**: al guardar o eliminar, la app pregunta si afecta solo a ese día, a ese día y los siguientes o a toda la serie.
+- **Colores**: en esa misma lista, el punto de color de cada calendario abre una paleta de diez colores. Se puede dar color a las citas de cada persona, a las de los dos, a las fechas señaladas y a cada calendario externo. El color se guarda en `ajustes/colores` y lo ven los dos; cada color tiene su versión para el modo claro y el oscuro.
 - **Ocultar calendarios**: en el menú de la inicial, «Mostrar en el calendario» permite quitar de la vista las citas de la app, las fechas señaladas, el menú de la Agenda o cada calendario externo. Se guarda en cada dispositivo; lo oculto sigue enviando avisos y apareciendo en el buscador. Mientras haya algo oculto, una nota arriba lo recuerda.
 - **Filtro** arriba: Todo, solo lo de uno (incluye lo común) o solo lo del otro.
 - Cada cita recuerda quién la añadió y quién la cambió por última vez. Al eliminar hay 6 segundos para deshacer.

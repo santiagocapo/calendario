@@ -94,7 +94,7 @@ main{max-width:640px;margin:0 auto;padding-bottom:calc(var(--nav-h) + 90px + env
 .ent .hora{font:600 1.15rem/1.25 var(--display);font-variant-numeric:tabular-nums}
 .ent .hora small{display:block;color:var(--muted);font-weight:500;font-size:.95rem}
 .ent .barra{align-self:stretch;min-height:1.5rem;border-radius:2px;background:var(--c)}
-.ent.es-fecha .barra{background:repeating-linear-gradient(var(--red) 0 5px,transparent 5px 8px)}
+.ent.es-fecha .barra{background:repeating-linear-gradient(var(--c) 0 5px,transparent 5px 8px)}
 .ent .t{display:block;font-weight:600;overflow-wrap:anywhere}
 .ent .meta{display:flex;flex-wrap:wrap;gap:.15rem .7rem;color:var(--muted);font-size:.875rem}
 .ent .quien{color:var(--c);font-weight:600}
@@ -186,7 +186,7 @@ textarea{resize:vertical}
 .acciones{display:flex;justify-content:space-between;align-items:center;gap:1rem}
 .acciones .primary{margin-left:auto;min-width:8rem}
 
-#menu,#alcance{border-radius:14px;padding:18px;width:min(340px,90vw)}
+#menu,#alcance,#paleta{border-radius:14px;padding:18px;width:min(340px,90vw)}
 #menu{max-height:90dvh;overflow:auto}
 #alcance h2{font:700 1.5rem/1.1 var(--display);margin:0 0 .35rem}
 #alcance p{margin:0 0 1rem;color:var(--muted)}
@@ -252,6 +252,13 @@ textarea{resize:vertical}
 .ext-conectados{list-style:none;margin:0;padding:0;width:100%}
 .ext-conectados .check{padding:.4rem 0}
 .ext-conectados .check input{accent-color:var(--ink)}
+.fila-cal{display:flex;align-items:center;gap:.5rem}
+.fila-cal .check{flex:1;min-width:0}
+.check.sangria{display:flex;gap:.75rem;padding:.35rem 0 .35rem 2.05rem}
+.punto{width:30px;height:30px;border-radius:50%;border:1px solid var(--line);background:var(--c);flex:none}
+.paleta{display:grid;grid-template-columns:repeat(5,1fr);gap:.55rem;margin:.5rem 0 0}
+.paleta button{aspect-ratio:1;border-radius:50%;border:2px solid transparent;background:var(--c);box-shadow:0 0 0 1px var(--line) inset}
+.paleta button[aria-pressed=true]{border-color:var(--ink)}
 .nota-ocultos{margin:0 16px .6rem;font-size:.85rem;color:var(--muted);display:flex;align-items:center;gap:.5rem}
 .serie-aviso{margin:0;padding:.6rem .75rem;border-radius:10px;background:var(--bg);font-size:.875rem;color:var(--muted)}
 #menu p{margin:0 0 .25rem}
@@ -415,6 +422,13 @@ textarea{resize:vertical}
   <datalist id="dl-productos"></datalist>
 </dialog>
 
+<dialog id="paleta" aria-label="Color del calendario">
+  <p><strong id="pal-titulo"></strong></p>
+  <p class="ayuda">El color lo veis los dos.</p>
+  <div class="paleta" id="pal-lista"></div>
+  <div class="acciones"><button type="button" class="btn" id="pal-cerrar">Volver</button></div>
+</dialog>
+
 <dialog id="menu" aria-label="Cuenta">
   <p><strong id="menu-nombre"></strong></p>
   <p class="ayuda" id="menu-email"></p>
@@ -483,7 +497,7 @@ let firebaseConfig, USUARIOS = {}, PERSONAS = [], APPS = {}, VAPID = "", appFb =
 let auth, db, me = null, eventos = [], fechas = [], escuchas = [];
 const st = { vista: "agenda", filtro: "todo", semana: null, mes: null, dia: null, menuSemana: null, dias: 60, q: "" };
 let menu = new Map(), platos = [], items = [], menuDesde = null, unsubMenu = null;
-let extPub = [], extMios = [];
+let extPub = [], extMios = [], colores = {};
 const externos = () => [...extPub, ...extMios];
 
 // Calendarios ocultos en la vista, guardados en este dispositivo:
@@ -509,7 +523,37 @@ const SLOTS = { comida: "Comida", cena: "Cena" };
 
 const nombreDe = email => USUARIOS[email] || email || "alguien";
 const persona = email => PERSONAS.find(p => p.email === email);
-const colorPara = para => para === "ambos" ? "var(--both)" : (persona(para)?.color || "var(--muted)");
+
+// Paleta: cada color tiene su versión para el modo claro y para el oscuro.
+const PALETA = [
+  { id: "azul", n: "Azul", c: "#2F6DB5", d: "#6FA3E0" },
+  { id: "turquesa", n: "Turquesa", c: "#14746F", d: "#52B6AE" },
+  { id: "verde", n: "Verde", c: "#4F7D3B", d: "#8DB86F" },
+  { id: "mostaza", n: "Mostaza", c: "#94770A", d: "#D7B93E" },
+  { id: "naranja", n: "Naranja", c: "#C2661C", d: "#E39755" },
+  { id: "rojo", n: "Rojo", c: "#C8322B", d: "#E5534B" },
+  { id: "rosa", n: "Rosa", c: "#B24C86", d: "#D983B2" },
+  { id: "morado", n: "Morado", c: "#6B4EA8", d: "#A98BE0" },
+  { id: "marron", n: "Marrón", c: "#7A5A3C", d: "#B08E6B" },
+  { id: "pizarra", n: "Pizarra", c: "#55606B", d: "#99A4AE" }
+];
+const oscuro = () => matchMedia("(prefers-color-scheme: dark)").matches;
+const hex = id => { const c = PALETA.find(x => x.id === id) || PALETA[9]; return oscuro() ? c.d : c.c; };
+matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => render());
+
+// Clave de color: "persona:<correo>", "ambos", "fechas" o "ext:<id>".
+const POR_DEFECTO = ["azul", "rosa"];
+function colorId(clave) {
+  if (colores[clave]) return colores[clave];
+  if (clave === "ambos") return "verde";
+  if (clave === "fechas") return "rojo";
+  if (clave.startsWith("persona:")) return POR_DEFECTO[PERSONAS.findIndex(p => p.email === clave.slice(8))] || "pizarra";
+  const i = externos().findIndex(f => "ext:" + f.id === clave);           // a cada calendario externo, un color distinto
+  return ["turquesa", "morado", "naranja", "mostaza", "marron", "pizarra"][i < 0 ? 0 : i % 6];
+}
+const colorDe = clave => hex(colorId(clave));
+const clavePara = para => para === "ambos" ? "ambos" : "persona:" + para;
+const colorPara = para => colorDe(clavePara(para));
 const nombrePara = para => para === "ambos" ? "Los dos" : (persona(para)?.nombre || "—");
 
 function mostrar(id) {
@@ -565,6 +609,7 @@ function escuchar() {
     e => toast(e.code === "permission-denied"
       ? "No se pueden leer los calendarios conectados: falta el bloque «externos» en las reglas de Firestore."
       : "Error al leer los calendarios conectados: " + e.message)));
+  escuchas.push(onSnapshot(doc(db, "ajustes", "colores"), d => { colores = d.data() || {}; render(); }, () => { }));
   ext(query(collection(db, "externos"), where("publico", "==", true)), l => { extPub = l; });
   ext(query(collection(db, "externos"), where("soloPara", "==", me)), l => { extMios = l; });
   escuchas.push(onSnapshot(collection(db, "items"), s => { items = s.docs.map(d => ({ id: d.id, ...d.data() })); }, fallo));
@@ -692,12 +737,12 @@ const aniosTexto = (f, n) => n == null || n < 0 ? "" : f.tipo === "cumple" ? `Cu
 function htmlEntrada(e) {
   if (e.tipo === "fecha") {
     const extra = aniosTexto(e.f, e.anios);
-    return `<li><button type="button" class="ent es-fecha" data-k="fecha" data-id="${esc(e.f.id)}">
+    return `<li><button type="button" class="ent es-fecha" data-k="fecha" data-id="${esc(e.f.id)}" style="--c:${colorDe("fechas")}">
       <span class="hora"></span><span class="barra"></span>
       <span><span class="t">${esc(tituloFecha(e.f))}</span>${extra ? `<span class="meta">${esc(extra)}</span>` : ""}</span></button></li>`;
   }
   if (e.tipo === "externo") {
-    const x = e.x, c = colorPara(e.fu.persona);
+    const x = e.x, c = colorDe("ext:" + e.fu.id);
     const hora = x.h && e.dia === 1 ? `${esc(x.h)}${x.hf ? `<small>${esc(x.hf)}</small>` : ""}` : "";
     const meta = [
       `<span class="quien">${esc(nombrePara(e.fu.persona))}</span>`,
@@ -776,10 +821,10 @@ function vMes() {
   h += `<div class="grid">` + ["L", "M", "X", "J", "V", "S", "D"].map((t, i) => `<div class="cab${i === 6 ? " dom" : ""}" aria-hidden="true">${t}</div>`).join("");
   for (let d = ini; d <= fin; d = addDays(d, 1)) {
     const k = ymd(d), l = mapa.get(k) || [];
-    const colores = [...new Set(l.map(e => e.tipo === "fecha" ? "var(--red)" : colorPara(e.tipo === "externo" ? e.fu.persona : e.ev.para)))].slice(0, 4);
+    const puntos = [...new Set(l.map(e => e.tipo === "fecha" ? colorDe("fechas") : e.tipo === "externo" ? colorDe("ext:" + e.fu.id) : colorPara(e.ev.para)))].slice(0, 4);
     const cls = ["cel", d.getMonth() !== ref.getMonth() && "fuera", d.getDay() === 0 && "dom", k === ymd(hoy) && "hoy", k === ymd(sel) && "sel"].filter(Boolean).join(" ");
     h += `<button type="button" class="${cls}" data-dia="${k}" aria-label="${F_DIA.format(d)}${l.length ? `, ${l.length} ${l.length === 1 ? "cosa" : "cosas"}` : ""}">
-      <span class="num">${d.getDate()}</span><span class="puntos">${colores.map(c => `<i style="--c:${c}"></i>`).join("")}</span></button>`;
+      <span class="num">${d.getDate()}</span><span class="puntos">${puntos.map(c => `<i style="--c:${c}"></i>`).join("")}</span></button>`;
   }
   const lSel = recoger(sel, sel).get(ymd(sel)) || [];
   return h + `</div><section class="mes-dia"><h2>${F_DIA.format(sel)}</h2>
@@ -897,7 +942,7 @@ function render() {
   $("#fab").hidden = st.vista === "menu" || st.vista === "buscar";
   $(".chips").style.visibility = st.vista === "menu" ? "hidden" : "";
   if (st.vista === "buscar" && $("#q")) { $("#resultados").innerHTML = resultados(); return; }   // no perder el foco al escribir
-  $(".chips").innerHTML = [["todo", "Todo", ""], ...PERSONAS.map(p => [p.email, p.nombre, p.color])]
+  $(".chips").innerHTML = [["todo", "Todo", ""], ...PERSONAS.map(p => [p.email, p.nombre, colorPara(p.email)])]
     .map(([v, t, c]) => `<button type="button" data-filtro="${esc(v)}" aria-pressed="${st.filtro === v}"${c ? ` style="--c:${c}"` : ""}>${c ? "<i></i>" : ""}${esc(t)}</button>`).join("");
   const nota = ocultos.size && ["agenda", "semana", "mes"].includes(st.vista)
     ? `<p class="nota-ocultos">${ocultos.size === 1 ? "Hay 1 calendario oculto." : `Hay ${ocultos.size} calendarios ocultos.`}<button type="button" class="enlace" data-ver-ocultos>Cambiar</button></p>` : "";
@@ -966,14 +1011,20 @@ $("#fab").addEventListener("click", () => {
 $("#btn-cuenta").addEventListener("click", () => {
   $("#menu-nombre").textContent = nombreDe(me); $("#menu-email").textContent = me;
   estadoAvisos();
-  const casilla = (k, t, det) => `<li><label class="check"><input type="checkbox" data-ver="${esc(k)}"${visible(k) ? " checked" : ""}>
-    <span><span class="t">${esc(t)}</span>${det ? `<small>${esc(det)}</small>` : ""}</span></label></li>`;
-  $("#ext-lista").innerHTML = casilla("app", "Citas de la app") + casilla("fechas", "Fechas señaladas") +
-    casilla("menu", "Menú del día en la Agenda") +
+  // Cada fila: casilla para verlo (si se puede ocultar) y punto para elegir su color (si lo tiene).
+  const fila = (ver, t, det, color) => `<li class="fila-cal">
+    ${ver ? `<label class="check"><input type="checkbox" data-ver="${esc(ver)}"${visible(ver) ? " checked" : ""}>` : `<span class="check sangria">`}
+    <span><span class="t">${esc(t)}</span>${det ? `<small>${esc(det)}</small>` : ""}</span>${ver ? "</label>" : "</span>"}
+    ${color ? `<button type="button" class="punto" data-color="${esc(color)}" style="--c:${colorDe(color)}" aria-label="Color de ${esc(t)}"></button>` : ""}</li>`;
+  $("#ext-lista").innerHTML = fila("app", "Citas de la app") +
+    PERSONAS.map(p => fila(null, `De ${p.nombre}`, "", "persona:" + p.email)).join("") +
+    fila(null, "De los dos", "", "ambos") +
+    fila("fechas", "Fechas señaladas", "", "fechas") +
+    fila("menu", "Menú del día en la Agenda") +
     externos().map(fu => {
       const t = fu.comprobado?.toDate?.();
       const hace = t ? new Intl.DateTimeFormat("es-ES", { weekday: "short", hour: "2-digit", minute: "2-digit" }).format(t) : "pendiente";
-      return casilla("ext:" + fu.id, `${fu.nombre} de ${nombrePara(fu.persona)}`, `${fu.publico ? "" : "Solo lo ves tú. "}Revisado: ${hace}.`);
+      return fila("ext:" + fu.id, `${fu.nombre} de ${nombrePara(fu.persona)}`, `${fu.publico ? "" : "Solo lo ves tú. "}Revisado: ${hace}.`, "ext:" + fu.id);
     }).join("");
   $("#menu").showModal();
 });
@@ -1038,6 +1089,28 @@ function refrescarAviso() {
 }
 $("#menu-cerrar").addEventListener("click", () => $("#menu").close());
 $("#ext-lista").addEventListener("change", e => { const k = e.target.dataset.ver; if (k) alternarOculto(k, e.target.checked); });
+$("#ext-lista").addEventListener("click", e => {
+  const b = e.target.closest("[data-color]"); if (!b) return;
+  abrirPaleta(b.dataset.color, b.getAttribute("aria-label"));
+});
+
+let claveColor = null;
+function abrirPaleta(clave, titulo) {
+  claveColor = clave;
+  $("#pal-titulo").textContent = titulo || "Color";
+  const actual = colorId(clave);
+  $("#pal-lista").innerHTML = PALETA.map(c => `<button type="button" data-p="${c.id}" style="--c:${hex(c.id)}" aria-label="${c.n}" aria-pressed="${c.id === actual}"></button>`).join("");
+  $("#paleta").showModal();
+}
+$("#pal-lista").addEventListener("click", e => {
+  const b = e.target.closest("[data-p]"); if (!b || !claveColor) return;
+  setDoc(doc(db, "ajustes", "colores"), { [claveColor]: b.dataset.p }, { merge: true }).catch(fallo);
+  colores = { ...colores, [claveColor]: b.dataset.p };     // se ve al momento, sin esperar al servidor
+  $("#paleta").close();
+  render();
+  $("#btn-cuenta").click();
+});
+$("#pal-cerrar").addEventListener("click", () => { $("#paleta").close(); $("#btn-cuenta").click(); });
 $("#btn-salir").addEventListener("click", () => { $("#menu").close(); signOut(auth); });
 document.addEventListener("visibilitychange", () => { if (!document.hidden) render(); });   // cambio de día con la app abierta
 
