@@ -52,11 +52,11 @@ button{font:inherit;color:inherit;cursor:pointer}
 .login form{display:grid;gap:.6rem;margin-top:.75rem}
 
 /* ---------- estructura ---------- */
-.top{position:sticky;top:0;z-index:5;background:var(--bg);display:flex;align-items:center;gap:.5rem;
-     padding:calc(env(safe-area-inset-top) + 10px) 16px 10px}
-.chips{display:flex;gap:.4rem;flex:1;overflow-x:auto}
-.chips button{border:1px solid var(--line);background:none;border-radius:999px;padding:.35rem .8rem;
-              font-size:.9rem;white-space:nowrap;display:flex;align-items:center;gap:.4rem}
+.top{position:sticky;top:0;z-index:5;background:var(--bg);display:flex;align-items:center;gap:.3rem;
+     padding:calc(env(safe-area-inset-top) + 10px) 12px 10px}
+.chips{display:flex;gap:.35rem;flex:1;overflow-x:auto;min-width:0}
+.chips button{border:1px solid var(--line);background:none;border-radius:999px;padding:.3rem .65rem;
+              font-size:.85rem;white-space:nowrap;display:flex;align-items:center;gap:.4rem}
 .chips button i{width:8px;height:8px;border-radius:50%;background:var(--c)}
 .chips button[aria-pressed=true]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
 .avatar{width:36px;height:36px;border-radius:50%;border:0;background:var(--c,var(--ink));color:#fff;
@@ -192,7 +192,7 @@ textarea{resize:vertical}
 .alc-ops{display:grid;gap:.5rem}
 .alc-ops .btn{width:100%}
 .alc-ops .cancelar{border:0;background:none;color:var(--muted);font-weight:500}
-.icono{width:36px;height:36px;border-radius:50%;border:0;background:none;display:grid;place-items:center;flex:none}
+.icono{color:inherit;width:34px;height:34px;border-radius:50%;border:0;background:none;display:grid;place-items:center;flex:none}
 .icono svg{width:22px;height:22px}
 .buscar{display:flex;gap:.5rem;margin:.25rem 16px 1rem}
 .buscar input{flex:1}
@@ -281,6 +281,8 @@ textarea{resize:vertical}
 <div id="v-app" hidden>
   <header class="top">
     <div class="chips" role="group" aria-label="Qué citas mostrar"></div>
+    <a class="icono" id="btn-compra" hidden aria-label="Abrir la lista de la compra" title="Lista de la compra">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 4h2.2l2.2 10.2a1.5 1.5 0 0 0 1.5 1.2h8.4a1.5 1.5 0 0 0 1.4-1.1L20.5 8H6.1"/><circle cx="9.5" cy="19.5" r="1.3"/><circle cx="17" cy="19.5" r="1.3"/></svg></a>
     <button class="icono" id="btn-buscar" type="button" aria-label="Buscar citas y fechas">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="10.5" cy="10.5" r="6.5"/><path d="M15.5 15.5 20 20"/></svg></button>
     <button class="avatar" id="btn-cuenta" type="button" aria-label="Cuenta"></button>
@@ -445,7 +447,7 @@ const AVISOS_DIA = [["", "Sin aviso"], ["dia9", "El mismo día a las 9:00"], ["v
 const REPITE = { semana: "Cada semana", mes: "Cada mes", anio: "Cada año" };
 
 /* =========================  estado  ========================= */
-let firebaseConfig, USUARIOS = {}, PERSONAS = [];
+let firebaseConfig, USUARIOS = {}, PERSONAS = [], APPS = {};
 let auth, db, me = null, eventos = [], fechas = [], escuchas = [];
 const st = { vista: "agenda", filtro: "todo", semana: null, mes: null, dia: null, menuSemana: null, dias: 60, q: "" };
 let menu = new Map(), platos = [], items = [], menuDesde = null, unsubMenu = null;
@@ -476,7 +478,9 @@ async function boot() {
     const cfg = await import("./config.js");
     firebaseConfig = cfg.firebaseConfig;
     USUARIOS = Object.fromEntries(Object.entries(cfg.USUARIOS || {}).map(([k, v]) => [k.toLowerCase(), v]));
+    APPS = cfg.APPS || {};
   } catch { return mostrar("#v-config"); }
+  if (APPS.compra) { $("#btn-compra").href = APPS.compra; $("#btn-compra").hidden = false; }
   if (!firebaseConfig?.apiKey || firebaseConfig.apiKey.startsWith("PEGA")) return mostrar("#v-config");
   PERSONAS = Object.entries(USUARIOS).slice(0, 2).map(([email, nombre], i) => ({ email, nombre, color: `var(--p${i + 1})` }));
 
@@ -1255,7 +1259,8 @@ function anadirALista(ings) {
       recurring: false, freq: null, onList: true, lastBought: null, ...sello
     }).catch(fallo);
   }
-  if (n) toast(`${n} ${n === 1 ? "producto añadido" : "productos añadidos"} a la lista de la compra`);
+  if (n) toast(`${n} ${n === 1 ? "producto añadido" : "productos añadidos"} a la lista de la compra`,
+               APPS.compra ? () => { location.href = APPS.compra; } : null, "Ver lista");
 }
 
 /* =========================  escritura en Firestore  ========================= */
@@ -1277,9 +1282,10 @@ const fallo = e => toast(e.code === "permission-denied"
 
 /* =========================  aviso inferior  ========================= */
 let toastT;
-function toast(msg, deshacer) {
+function toast(msg, deshacer, etiqueta = "Deshacer") {
   const t = $("#toast"), b = t.querySelector("button");
   t.querySelector("span").textContent = msg;
+  b.textContent = etiqueta;
   b.hidden = !deshacer;
   b.onclick = () => { t.hidden = true; deshacer(); };
   t.hidden = false;
