@@ -2,7 +2,7 @@
 
 Calendario compartido para dos personas: citas, fechas señaladas y, más adelante, el menú semanal enlazado con la lista de la compra. Es una PWA de un solo archivo alojada en GitHub Pages que usa el mismo proyecto de Firebase que la lista de la compra.
 
-## Qué hace (versión 3)
+## Qué hace (versión 4)
 
 - **Agenda**: la hoja de hoy arriba, con el menú del día, y debajo todo lo de los próximos 60 días. El botón «Ver 60 días más» amplía el plazo.
 - **Semana**: los siete días de lunes a domingo. Tocar el número de un día abre una cita nueva en ese día.
@@ -13,11 +13,28 @@ Calendario compartido para dos personas: citas, fechas señaladas y, más adelan
 - **Fechas**: cumpleaños, aniversarios y otras fechas que se repiten cada año, ordenadas por la más cercana. Con el año de nacimiento calcula los que cumple.
 - **Citas**: para una persona o para los dos, con hora o de día completo, de uno o varios días (vacaciones), con repetición semanal, mensual o anual y fecha de fin opcional.
 - **Citas que se repiten**: al guardar o eliminar, la app pregunta si afecta solo a ese día, a ese día y los siguientes o a toda la serie.
+- **Ocultar calendarios**: en el menú de la inicial, «Mostrar en el calendario» permite quitar de la vista las citas de la app, las fechas señaladas, el menú de la Agenda o cada calendario externo. Se guarda en cada dispositivo; lo oculto sigue enviando avisos y apareciendo en el buscador. Mientras haya algo oculto, una nota arriba lo recuerda.
 - **Filtro** arriba: Todo, solo lo de uno (incluye lo común) o solo lo del otro.
 - Cada cita recuerda quién la añadió y quién la cambió por última vez. Al eliminar hay 6 segundos para deshacer.
 - Funciona sin conexión: los cambios se guardan en el móvil y se suben al volver la red.
 
 Colores: la primera persona de `USUARIOS` en azul, la segunda en rosa, «Los dos» en verde y las fechas señaladas con una raya discontinua roja.
+
+## Calendarios externos (iCloud, Google…)
+
+- Se importan en un solo sentido: aparecen en la app, pero se crean y se cambian en su calendario de origen. En la app se distinguen por la etiqueta con el nombre del calendario y al tocarlas se ven en modo de solo lectura.
+- Los importa `avisos/importar.mjs`, dentro de la misma tarea de Actions, a las en punto y a las y media. Guarda desde dos semanas atrás hasta nueve meses adelante.
+- Los enlaces van en el secreto `CALENDARIOS_EXTERNOS` del repositorio, con este formato (una entrada por calendario):
+
+  ```json
+  [
+    { "id": "icloud-santi", "nombre": "iCloud", "persona": "correo@gmail.com", "url": "webcal://…", "verPara": "ambos" },
+    { "id": "trabajo-santi", "nombre": "Trabajo", "persona": "correo@gmail.com", "url": "https://calendar.google.com/…/basic.ics", "verPara": "propio" }
+  ]
+  ```
+
+  `persona` es el correo de la app de quien es el calendario (define su color). `verPara`: `ambos` lo ven los dos; `propio`, solo su dueño, y las reglas de Firestore impiden que el otro lo lea.
+- En el menú de la inicial aparece la lista de calendarios conectados y la hora de la última revisión.
 
 ## Avisos
 
@@ -53,6 +70,7 @@ El calendario reutiliza el proyecto de Firebase de la lista de la compra, así q
 
 ## Datos en Firestore
 
+- `externos`: un documento por calendario importado, con `nombre`, `persona`, `publico`, `soloPara` y la lista `eventos` (`t` título, `f` fecha, `h` y `hf` horas, `ff` último día, `l` lugar, `n` notas). Solo lo escribe la tarea de GitHub.
 - `dispositivos`: uno por dispositivo con avisos, con `token`, `usuario`, `dispositivo` y `actualizado`.
 - `sistema/avisos`: hora de la última revisión de avisos (solo la usa el script).
 

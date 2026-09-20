@@ -187,6 +187,7 @@ textarea{resize:vertical}
 .acciones .primary{margin-left:auto;min-width:8rem}
 
 #menu,#alcance{border-radius:14px;padding:18px;width:min(340px,90vw)}
+#menu{max-height:90dvh;overflow:auto}
 #alcance h2{font:700 1.5rem/1.1 var(--display);margin:0 0 .35rem}
 #alcance p{margin:0 0 1rem;color:var(--muted)}
 .alc-ops{display:grid;gap:.5rem}
@@ -244,6 +245,14 @@ textarea{resize:vertical}
 .check.ya{opacity:.55}
 .avisos-cfg{margin-top:1rem;padding-top:.9rem;border-top:1px solid var(--line);display:grid;gap:.4rem;justify-items:start}
 .avisos-cfg p{margin:0}
+.ent.es-ext .barra{background:none;box-shadow:inset 0 0 0 2px var(--c)}
+.ent .fuente{border:1px solid var(--line);border-radius:4px;padding:0 .3rem;font-size:.75rem;line-height:1.4}
+.ext-det{display:grid;gap:.35rem}
+.ext-det p{margin:0}
+.ext-conectados{list-style:none;margin:0;padding:0;width:100%}
+.ext-conectados .check{padding:.4rem 0}
+.ext-conectados .check input{accent-color:var(--ink)}
+.nota-ocultos{margin:0 16px .6rem;font-size:.85rem;color:var(--muted);display:flex;align-items:center;gap:.5rem}
 .serie-aviso{margin:0;padding:.6rem .75rem;border-radius:10px;background:var(--bg);font-size:.875rem;color:var(--muted)}
 #menu p{margin:0 0 .25rem}
 #menu .acciones{margin-top:1rem}
@@ -397,12 +406,23 @@ textarea{resize:vertical}
       <button type="button" class="btn primary" id="hc-si" disabled>Añadir a la lista</button>
     </div>
   </div>
+  <div id="h-ext" class="hoja" hidden>
+    <div class="hoja-cab"><h2 id="hx-titulo"></h2><button type="button" class="x" data-cerrar aria-label="Cerrar">×</button></div>
+    <div class="ext-det" id="hx-det"></div>
+    <p class="serie-aviso" id="hx-origen"></p>
+    <p class="err" hidden></p>
+  </div>
   <datalist id="dl-productos"></datalist>
 </dialog>
 
 <dialog id="menu" aria-label="Cuenta">
   <p><strong id="menu-nombre"></strong></p>
   <p class="ayuda" id="menu-email"></p>
+  <div class="avisos-cfg">
+    <p><strong>Mostrar en el calendario</strong></p>
+    <p class="ayuda">Solo en este dispositivo. Lo oculto sigue avisando y sale en el buscador.</p>
+    <ul class="ext-conectados" id="ext-lista"></ul>
+  </div>
   <div class="avisos-cfg">
     <p><strong>Avisos en este dispositivo</strong></p>
     <p class="ayuda" id="av-estado"></p>
@@ -463,6 +483,18 @@ let firebaseConfig, USUARIOS = {}, PERSONAS = [], APPS = {}, VAPID = "", appFb =
 let auth, db, me = null, eventos = [], fechas = [], escuchas = [];
 const st = { vista: "agenda", filtro: "todo", semana: null, mes: null, dia: null, menuSemana: null, dias: 60, q: "" };
 let menu = new Map(), platos = [], items = [], menuDesde = null, unsubMenu = null;
+let extPub = [], extMios = [];
+const externos = () => [...extPub, ...extMios];
+
+// Calendarios ocultos en la vista, guardados en este dispositivo:
+// "app" (citas de la app), "fechas", "menu" (menú en la agenda) y "ext:<id>" para cada externo.
+const ocultos = new Set((() => { try { return JSON.parse(localStorage.getItem("ocultos") || "[]"); } catch { return []; } })());
+const visible = k => !ocultos.has(k);
+function alternarOculto(k, ver) {
+  ver ? ocultos.delete(k) : ocultos.add(k);
+  try { localStorage.setItem("ocultos", JSON.stringify([...ocultos])); } catch { }
+  render();
+}
 const norm = s => String(s || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
 
 // Secciones de la lista de la compra (mismos identificadores que en esa app).
@@ -529,6 +561,9 @@ function escuchar() {
   escuchas.push(onSnapshot(collection(db, "eventos"), s => { eventos = s.docs.map(d => ({ id: d.id, ...d.data() })); render(); }, fallo));
   escuchas.push(onSnapshot(collection(db, "fechas"), s => { fechas = s.docs.map(d => ({ id: d.id, ...d.data() })); render(); }, fallo));
   escuchas.push(onSnapshot(collection(db, "platos"), s => { platos = s.docs.map(d => ({ id: d.id, ...d.data() })); render(); if (!hSlot.hidden && sheet.open) pintarSlot(); }, fallo));
+  const ext = (q, fijar) => escuchas.push(onSnapshot(q, s => { fijar(s.docs.map(d => ({ id: d.id, ...d.data() }))); render(); }, () => { }));
+  ext(query(collection(db, "externos"), where("publico", "==", true)), l => { extPub = l; });
+  ext(query(collection(db, "externos"), where("soloPara", "==", me)), l => { extMios = l; });
   escuchas.push(onSnapshot(collection(db, "items"), s => { items = s.docs.map(d => ({ id: d.id, ...d.data() })); }, fallo));
   escuchas.push(() => { if (unsubMenu) unsubMenu(); unsubMenu = null; menuDesde = null; });
   escucharMenu(addDays(monday(today()), -28));
@@ -610,7 +645,7 @@ const proxima = (f, desde) => { const d = fechaEn(f, desde.getFullYear()); retur
 function recoger(desde, hasta) {
   const mapa = new Map();
   const poner = (k, e) => { if (!mapa.has(k)) mapa.set(k, []); mapa.get(k).push(e); };
-  for (const ev of eventos) {
+  for (const ev of visible("app") ? eventos : []) {
     if (!ev.fecha) continue;
     if (st.filtro !== "todo" && ev.para !== "ambos" && ev.para !== st.filtro) continue;
     const dur = ev.fechaFin ? Math.max(0, diffDays(parse(ev.fecha), parse(ev.fechaFin))) : 0;
@@ -621,13 +656,28 @@ function recoger(desde, hasta) {
       }
     }
   }
-  for (const f of fechas) {
+  for (const fu of externos()) {
+    if (!visible("ext:" + fu.id)) continue;
+    if (st.filtro !== "todo" && fu.persona !== st.filtro) continue;
+    (fu.eventos || []).forEach((x, i) => {
+      if (!x.f) return;
+      const ini = parse(x.f), dur = x.ff ? Math.max(0, diffDays(ini, parse(x.ff))) : 0;
+      if (addDays(ini, dur) < desde || ini > hasta) return;
+      for (let j = 0; j <= dur; j++) {
+        const d = addDays(ini, j);
+        if (d >= desde && d <= hasta) poner(ymd(d), { tipo: "externo", x, i, fu, dia: j + 1, dias: dur + 1 });
+      }
+    });
+  }
+  for (const f of visible("fechas") ? fechas : []) {
     for (let y = desde.getFullYear(); y <= hasta.getFullYear(); y++) {
       const d = fechaEn(f, y);
       if (d >= desde && d <= hasta) poner(ymd(d), { tipo: "fecha", f, anios: f.anio ? y - f.anio : null });
     }
   }
-  const clave = e => e.tipo === "fecha" ? "0" + e.f.nombre : (e.ev.hora ? "2" + e.ev.hora : "1") + e.ev.titulo;
+  const clave = e => e.tipo === "fecha" ? "0" + e.f.nombre
+    : e.tipo === "externo" ? (e.x.h && e.dia === 1 ? "2" + e.x.h : "1") + e.x.t
+    : (e.ev.hora && e.dia === 1 ? "2" + e.ev.hora : "1") + e.ev.titulo;
   for (const l of mapa.values()) l.sort((a, b) => clave(a).localeCompare(clave(b)));
   return mapa;
 }
@@ -642,6 +692,19 @@ function htmlEntrada(e) {
     return `<li><button type="button" class="ent es-fecha" data-k="fecha" data-id="${esc(e.f.id)}">
       <span class="hora"></span><span class="barra"></span>
       <span><span class="t">${esc(tituloFecha(e.f))}</span>${extra ? `<span class="meta">${esc(extra)}</span>` : ""}</span></button></li>`;
+  }
+  if (e.tipo === "externo") {
+    const x = e.x, c = colorPara(e.fu.persona);
+    const hora = x.h && e.dia === 1 ? `${esc(x.h)}${x.hf ? `<small>${esc(x.hf)}</small>` : ""}` : "";
+    const meta = [
+      `<span class="quien">${esc(nombrePara(e.fu.persona))}</span>`,
+      `<span class="fuente">${esc(e.fu.nombre)}</span>`,
+      x.l ? `<span>${esc(x.l)}</span>` : "",
+      e.dias > 1 ? `<span>Día ${e.dia} de ${e.dias}</span>` : ""
+    ].join("");
+    return `<li><button type="button" class="ent es-ext" data-k="externo" data-id="${esc(e.fu.id)}" data-i="${e.i}" style="--c:${c}">
+      <span class="hora">${hora}</span><span class="barra"></span>
+      <span><span class="t">${esc(x.t)}</span><span class="meta">${meta}</span></span></button></li>`;
   }
   const ev = e.ev, c = colorPara(ev.para);
   const hora = ev.hora && e.dia === 1 ? `${esc(ev.hora)}${ev.horaFin ? `<small>${esc(ev.horaFin)}</small>` : ""}` : "";
@@ -665,7 +728,7 @@ function vAgenda() {
     <div class="taco-banda"><span class="aro"></span><span>${cap(F_MES.format(hoy))} ${hoy.getFullYear()}</span><span class="aro"></span></div>
     <div class="taco-cuerpo"><div class="taco-num">${hoy.getDate()}</div><div class="taco-dia">${F_WD.format(hoy)}</div>
     ${lHoy.length ? htmlLista(lHoy) : `<p class="vacio">Nada apuntado para hoy.</p>`}
-    <div class="taco-menu">${htmlMenuDia(ymd(hoy), true)}</div></div></section>`;
+    ${visible("menu") ? `<div class="taco-menu">${htmlMenuDia(ymd(hoy), true)}</div>` : ""}</div></section>`;
   let dias = "";
   for (let i = 1; i <= N; i++) {
     const d = addDays(hoy, i), k = ymd(d), l = mapa.get(k), m = htmlMenuDia(k, false);
@@ -710,7 +773,7 @@ function vMes() {
   h += `<div class="grid">` + ["L", "M", "X", "J", "V", "S", "D"].map((t, i) => `<div class="cab${i === 6 ? " dom" : ""}" aria-hidden="true">${t}</div>`).join("");
   for (let d = ini; d <= fin; d = addDays(d, 1)) {
     const k = ymd(d), l = mapa.get(k) || [];
-    const colores = [...new Set(l.map(e => e.tipo === "fecha" ? "var(--red)" : colorPara(e.ev.para)))].slice(0, 4);
+    const colores = [...new Set(l.map(e => e.tipo === "fecha" ? "var(--red)" : colorPara(e.tipo === "externo" ? e.fu.persona : e.ev.para)))].slice(0, 4);
     const cls = ["cel", d.getMonth() !== ref.getMonth() && "fuera", d.getDay() === 0 && "dom", k === ymd(hoy) && "hoy", k === ymd(sel) && "sel"].filter(Boolean).join(" ");
     h += `<button type="button" class="${cls}" data-dia="${k}" aria-label="${F_DIA.format(d)}${l.length ? `, ${l.length} ${l.length === 1 ? "cosa" : "cosas"}` : ""}">
       <span class="num">${d.getDate()}</span><span class="puntos">${colores.map(c => `<i style="--c:${c}"></i>`).join("")}</span></button>`;
@@ -741,6 +804,7 @@ function vFechas() {
 // Menú de un día. En la hoja de hoy se muestran siempre las dos comidas (para poder decidirlas);
 // en los días siguientes, solo si hay algo puesto.
 function htmlMenuDia(k, siempre) {
+  if (!visible("menu")) return "";
   const m = menu.get(k) || {};
   const hay = Object.keys(SLOTS).some(s => m[s]?.length);
   if (!hay && !siempre) return "";
@@ -792,6 +856,14 @@ function resultados() {
     if (prox) fut.push({ d: prox, html: filaRes(prox, "evento", ev) });
     else { const d = parse(ev.repite && ev.repite !== "no" && ev.repiteHasta ? ev.repiteHasta : ev.fecha); pas.push({ d, html: filaRes(inicios(ev, addDays(d, -400), d).pop() || parse(ev.fecha), "evento", ev) }); }
   }
+  const hoyY = ymd(hoy);
+  for (const fu of externos()) (fu.eventos || []).forEach((x, i) => {
+    if ((x.ff || x.f) < hoyY || !norm(`${x.t} ${x.l || ""} ${x.n || ""}`).includes(q)) return;
+    const d = parse(x.f);
+    fut.push({ d, html: `<li><button type="button" class="ent es-ext" data-k="externo" data-id="${esc(fu.id)}" data-i="${i}">
+      <span class="mini"><span class="m">${esc(F_MESC.format(d).replace(".", ""))}</span><span class="n">${d.getDate()}</span>${d.getFullYear() !== hoy.getFullYear() ? `<span class="a">${d.getFullYear()}</span>` : ""}</span>
+      <span><span class="t">${esc(x.t)}</span><span class="meta"><span>${F_WD.format(d)}</span><span>${x.h ? esc(x.h) : "Todo el día"}</span><span class="fuente">${esc(fu.nombre)}</span></span></span></button></li>` });
+  });
   for (const f of fechas) {
     if (!norm(`${f.nombre} ${f.notas || ""}`).includes(q)) continue;
     const n = proxima(f, hoy); fut.push({ d: n, html: filaRes(n, "fecha", f) });
@@ -824,7 +896,9 @@ function render() {
   if (st.vista === "buscar" && $("#q")) { $("#resultados").innerHTML = resultados(); return; }   // no perder el foco al escribir
   $(".chips").innerHTML = [["todo", "Todo", ""], ...PERSONAS.map(p => [p.email, p.nombre, p.color])]
     .map(([v, t, c]) => `<button type="button" data-filtro="${esc(v)}" aria-pressed="${st.filtro === v}"${c ? ` style="--c:${c}"` : ""}>${c ? "<i></i>" : ""}${esc(t)}</button>`).join("");
-  $("#main").innerHTML = ({ agenda: vAgenda, semana: vSemana, mes: vMes, fechas: vFechas, menu: vMenu, buscar: vBuscar })[st.vista]();
+  const nota = ocultos.size && ["agenda", "semana", "mes"].includes(st.vista)
+    ? `<p class="nota-ocultos">${ocultos.size === 1 ? "Hay 1 calendario oculto." : `Hay ${ocultos.size} calendarios ocultos.`}<button type="button" class="enlace" data-ver-ocultos>Cambiar</button></p>` : "";
+  $("#main").innerHTML = nota + ({ agenda: vAgenda, semana: vSemana, mes: vMes, fechas: vFechas, menu: vMenu, buscar: vBuscar })[st.vista]();
   $("#fab").setAttribute("aria-label", st.vista === "fechas" ? "Añadir fecha señalada" : "Añadir cita");
 }
 
@@ -851,6 +925,7 @@ $("#main").addEventListener("change", e => {
   render();
 });
 $("#main").addEventListener("click", e => {
+  if (e.target.closest("[data-ver-ocultos]")) return $("#btn-cuenta").click();
   const s = e.target.closest("[data-saltar]");
   if (s) { try { s.showPicker(); } catch { } return; }
   const t = e.target.closest("[data-k],[data-nav],[data-dia],[data-nuevo],[data-hoy],[data-mas],[data-slot],[data-plato],[data-nuevo-plato],[data-compra-semana],[data-cerrar-buscar]"); if (!t) return;
@@ -863,6 +938,7 @@ $("#main").addEventListener("click", e => {
   if ("cerrarBuscar" in t.dataset) { st.vista = "agenda"; return render(); }
   if (t.dataset.k === "evento") { const ev = eventos.find(x => x.id === t.dataset.id); if (ev) abrirEvento(ev, null, t.dataset.occ); }
   else if (t.dataset.k === "fecha") { const f = fechas.find(x => x.id === t.dataset.id); if (f) abrirFecha(f); }
+  else if (t.dataset.k === "externo") { const fu = externos().find(x => x.id === t.dataset.id); if (fu?.eventos?.[t.dataset.i]) abrirExterno(fu, fu.eventos[t.dataset.i]); }
   else if (t.dataset.nuevo) abrirEvento(null, t.dataset.nuevo);
   else if (t.dataset.dia) { st.dia = parse(t.dataset.dia); render(); }
   else if ("hoy" in t.dataset) { st.semana = null; st.mes = null; st.dia = null; st.menuSemana = null; render(); }
@@ -887,6 +963,15 @@ $("#fab").addEventListener("click", () => {
 $("#btn-cuenta").addEventListener("click", () => {
   $("#menu-nombre").textContent = nombreDe(me); $("#menu-email").textContent = me;
   estadoAvisos();
+  const casilla = (k, t, det) => `<li><label class="check"><input type="checkbox" data-ver="${esc(k)}"${visible(k) ? " checked" : ""}>
+    <span><span class="t">${esc(t)}</span>${det ? `<small>${esc(det)}</small>` : ""}</span></label></li>`;
+  $("#ext-lista").innerHTML = casilla("app", "Citas de la app") + casilla("fechas", "Fechas señaladas") +
+    casilla("menu", "Menú del día en la Agenda") +
+    externos().map(fu => {
+      const t = fu.comprobado?.toDate?.();
+      const hace = t ? new Intl.DateTimeFormat("es-ES", { weekday: "short", hour: "2-digit", minute: "2-digit" }).format(t) : "pendiente";
+      return casilla("ext:" + fu.id, `${fu.nombre} de ${nombrePara(fu.persona)}`, `${fu.publico ? "" : "Solo lo ves tú. "}Revisado: ${hace}.`);
+    }).join("");
   $("#menu").showModal();
 });
 
@@ -949,12 +1034,13 @@ function refrescarAviso() {
   registrarToken().catch(() => { });
 }
 $("#menu-cerrar").addEventListener("click", () => $("#menu").close());
+$("#ext-lista").addEventListener("change", e => { const k = e.target.dataset.ver; if (k) alternarOculto(k, e.target.checked); });
 $("#btn-salir").addEventListener("click", () => { $("#menu").close(); signOut(auth); });
 document.addEventListener("visibilitychange", () => { if (!document.hidden) render(); });   // cambio de día con la app abierta
 
 /* =========================  hoja de edición  ========================= */
-const sheet = $("#sheet"), fe = $("#f-evento"), ff = $("#f-fecha"), hSlot = $("#h-slot"), fp = $("#f-plato"), hCompra = $("#h-compra");
-const PANELES = [fe, ff, hSlot, fp, hCompra];
+const sheet = $("#sheet"), fe = $("#f-evento"), ff = $("#f-fecha"), hSlot = $("#h-slot"), fp = $("#f-plato"), hCompra = $("#h-compra"), hExt = $("#h-ext");
+const PANELES = [fe, ff, hSlot, fp, hCompra, hExt];
 let editando = null, slotCtx = null, platoEdit = null, compraCtx = null;
 
 function abrirHoja(form) {
@@ -1155,6 +1241,23 @@ $("#ff-borrar").addEventListener("click", () => {
   cerrarHoja();
   borrar("fechas", it, "Fecha eliminada");
 });
+
+/* =========================  citas de calendarios externos (solo lectura)  ========================= */
+function abrirExterno(fu, x) {
+  $("#hx-titulo").textContent = x.t;
+  const ini = parse(x.f);
+  const cuando = x.ff
+    ? `Del ${F_DIA.format(ini)} al ${F_DIA.format(parse(x.ff))}${x.h ? `, desde las ${x.h}` : ""}`
+    : `${cap(F_DIA.format(ini))}, ${x.h ? `de ${x.h}${x.hf ? ` a ${x.hf}` : ""}` : "todo el día"}`;
+  $("#hx-det").innerHTML = [
+    `<p>${esc(cuando)}</p>`,
+    x.l ? `<p><span class="ayuda">Dónde:</span> ${esc(x.l)}</p>` : "",
+    x.n ? `<p class="ayuda" style="white-space:pre-line">${esc(x.n)}</p>` : ""
+  ].join("");
+  $("#hx-origen").textContent = `Viene del calendario «${fu.nombre}» de ${nombrePara(fu.persona)}` +
+    (fu.publico ? "" : ", que solo ves tú") + `. Para cambiarla, hazlo allí; aquí se actualiza sola cada media hora.`;
+  abrirHoja(hExt);
+}
 
 /* =========================  menú semanal  ========================= */
 function escribirSlot(fecha, slot, lista) {

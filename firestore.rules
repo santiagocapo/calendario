@@ -21,5 +21,13 @@ service cloud.firestore {
 
     // --- Avisos: un documento por móvil u ordenador con los avisos activados ---
     match /dispositivos/{id} { allow read, write: if esDeCasa(); }
+
+    // --- Calendarios externos (iCloud, Google…): solo los escribe la tarea de GitHub.
+    // Los marcados «solo para mí» solo los puede leer su dueño.
+    match /externos/{id} {
+      allow read: if esDeCasa() &&
+        (resource.data.publico == true || resource.data.soloPara == request.auth.token.email.lower());
+      allow write: if false;
+    }
   }
 }
