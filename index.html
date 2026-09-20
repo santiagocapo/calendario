@@ -1,0 +1,805 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Calendario</title>
+<meta name="theme-color" content="#F3F5F4" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#12161A" media="(prefers-color-scheme: dark)">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Calendario">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#F3F5F4; --surface:#FFFFFF; --ink:#1D252D; --muted:#66707A; --line:#DDE2DF;
+  --red:#C8322B; --p1:#2F6DB5; --p2:#B24C86; --both:#4F7D3B;
+  --display:"Barlow Condensed","Arial Narrow",sans-serif;
+  --body:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  --nav-h:60px;
+  color-scheme:light dark;
+}
+@media (prefers-color-scheme:dark){
+  :root{ --bg:#12161A; --surface:#1B2127; --ink:#E6EAED; --muted:#98A2AC; --line:#2C343C;
+         --red:#E5534B; --p1:#6FA3E0; --p2:#D983B2; --both:#8DB86F; }
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.45 var(--body);-webkit-text-size-adjust:100%}
+button{font:inherit;color:inherit;cursor:pointer}
+:focus-visible{outline:2px solid var(--p1);outline-offset:2px;border-radius:4px}
+[hidden]{display:none !important}
+.center{min-height:100dvh;display:grid;place-items:center;padding:24px;text-align:center}
+.vacio,.libre{color:var(--muted);margin:.5rem 0}
+.err{color:var(--red);font-weight:600;margin:.5rem 0}
+
+/* ---------- botones ---------- */
+.btn{border:1px solid var(--line);background:var(--surface);border-radius:10px;padding:.7rem 1.1rem;font-weight:600}
+.btn.primary{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.btn.peligro{color:var(--red);border-color:transparent;background:none;padding-inline:.25rem}
+
+/* ---------- acceso ---------- */
+.login{max-width:340px;width:100%;display:grid;gap:1rem;justify-items:center}
+.login h1{font:700 2.4rem/1 var(--display);margin:0}
+.login p{margin:0;color:var(--muted)}
+.login .btn{width:100%}
+.login details{width:100%;text-align:left}
+.login summary{color:var(--muted);text-align:center;cursor:pointer;padding:.25rem}
+.login form{display:grid;gap:.6rem;margin-top:.75rem}
+
+/* ---------- estructura ---------- */
+.top{position:sticky;top:0;z-index:5;background:var(--bg);display:flex;align-items:center;gap:.5rem;
+     padding:calc(env(safe-area-inset-top) + 10px) 16px 10px}
+.chips{display:flex;gap:.4rem;flex:1;overflow-x:auto}
+.chips button{border:1px solid var(--line);background:none;border-radius:999px;padding:.35rem .8rem;
+              font-size:.9rem;white-space:nowrap;display:flex;align-items:center;gap:.4rem}
+.chips button i{width:8px;height:8px;border-radius:50%;background:var(--c)}
+.chips button[aria-pressed=true]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.avatar{width:36px;height:36px;border-radius:50%;border:0;background:var(--c,var(--ink));color:#fff;
+        font:700 1.1rem var(--display);flex:none}
+main{max-width:640px;margin:0 auto;padding-bottom:calc(var(--nav-h) + 90px + env(safe-area-inset-bottom))}
+.tabs{position:fixed;left:0;right:0;bottom:0;z-index:6;background:var(--surface);border-top:1px solid var(--line);
+      display:grid;grid-template-columns:repeat(4,1fr);padding-bottom:env(safe-area-inset-bottom)}
+.tabs button{height:var(--nav-h);border:0;background:none;color:var(--muted);font-size:.9rem;position:relative}
+.tabs button[aria-current=page]{color:var(--ink);font-weight:600}
+.tabs button[aria-current=page]::before{content:"";position:absolute;top:0;left:30%;right:30%;height:3px;
+      background:var(--red);border-radius:0 0 3px 3px}
+.fab{position:fixed;right:18px;z-index:6;bottom:calc(var(--nav-h) + env(safe-area-inset-bottom) + 16px);
+     width:58px;height:58px;border-radius:50%;border:0;background:var(--red);color:#fff;display:grid;place-items:center;
+     box-shadow:0 8px 18px -8px rgb(0 0 0 / .55)}
+.fab svg{width:26px;height:26px}
+@media (min-width:700px){ .fab{right:calc(50% - 320px + 18px)} }
+
+/* ---------- la hoja de taco (hoy) ---------- */
+.taco{background:var(--surface);margin:6px 16px 26px;border-radius:8px 8px 3px 3px;
+      box-shadow:0 1px 0 var(--line),0 14px 28px -22px rgb(0 0 0 / .6)}
+.taco-banda{background:var(--red);color:#fff;border-radius:8px 8px 0 0;display:flex;align-items:center;
+      justify-content:space-between;padding:.55rem 1rem;font:600 1.2rem/1 var(--display);letter-spacing:.02em}
+.aro{width:11px;height:11px;border-radius:50%;background:var(--bg);box-shadow:inset 0 1px 2px rgb(0 0 0 / .4)}
+.taco-cuerpo{padding:.35rem 1rem 1rem;text-align:center;border-bottom:2px dashed var(--line)}
+.taco-num{font:700 8rem/.9 var(--display);letter-spacing:-.03em;font-variant-numeric:lining-nums}
+.taco.dom .taco-num{color:var(--red)}
+.taco-dia{font:500 1.45rem/1.2 var(--display);color:var(--muted);margin-bottom:.9rem}
+.taco .lista,.taco .vacio{text-align:left;border-top:1px solid var(--line);padding-top:.35rem}
+
+/* ---------- entradas ---------- */
+.lista{list-style:none;margin:0;padding:0}
+.lista li+li{border-top:1px solid var(--line)}
+.ent{display:grid;grid-template-columns:3.1rem 4px 1fr;gap:.75rem;width:100%;text-align:left;background:none;
+     border:0;padding:.6rem 0;align-items:start}
+.ent .hora{font:600 1.15rem/1.25 var(--display);font-variant-numeric:tabular-nums}
+.ent .hora small{display:block;color:var(--muted);font-weight:500;font-size:.95rem}
+.ent .barra{align-self:stretch;min-height:1.5rem;border-radius:2px;background:var(--c)}
+.ent.es-fecha .barra{background:repeating-linear-gradient(var(--red) 0 5px,transparent 5px 8px)}
+.ent .t{display:block;font-weight:600;overflow-wrap:anywhere}
+.ent .meta{display:flex;flex-wrap:wrap;gap:.15rem .7rem;color:var(--muted);font-size:.875rem}
+.ent .quien{color:var(--c);font-weight:600}
+.sec{font:700 1.6rem/1.1 var(--display);margin:0 16px .5rem}
+.dia{margin:0 16px 1.1rem}
+.dia h2,.mes-dia h2{font:600 1.1rem/1.2 var(--display);color:var(--muted);margin:0 0 .15rem}
+.dia h2::first-letter,.mes-dia h2::first-letter{text-transform:uppercase}
+.dia h2.dom{color:var(--red)}
+
+/* ---------- navegación semana/mes ---------- */
+.nav{display:flex;align-items:center;gap:.25rem;padding:.25rem 8px .5rem}
+.nav h1{flex:1;text-align:center;font:700 1.55rem/1.1 var(--display);margin:0}
+.nav h1::first-letter{text-transform:uppercase}
+.nav button{width:44px;height:44px;border:0;background:none;display:grid;place-items:center;border-radius:10px}
+.nav svg{width:22px;height:22px}
+.hoy-btn{display:block;margin:-.25rem auto .75rem;border:1px solid var(--line);background:none;border-radius:999px;
+         padding:.25rem .9rem;font-size:.875rem}
+
+/* ---------- semana ---------- */
+.sd{display:grid;grid-template-columns:3.4rem 1fr;gap:.75rem;padding:.55rem 16px;border-top:1px solid var(--line)}
+.sd-fecha{border:0;background:none;padding:.3rem 0;border-radius:8px;display:flex;flex-direction:column;
+          align-items:center;align-self:start;line-height:1}
+.sd-fecha .n{font:700 1.9rem/1 var(--display)}
+.sd-fecha .w{font-size:.8rem;color:var(--muted)}
+.sd-fecha.dom .n{color:var(--red)}
+.sd.hoy .sd-fecha{background:var(--ink);color:var(--bg)}
+.sd.hoy .sd-fecha .w,.sd.hoy .sd-fecha.dom .n{color:inherit}
+.sd .ent{grid-template-columns:2.9rem 4px 1fr;padding:.4rem 0}
+.sd .libre{margin:.55rem 0}
+
+/* ---------- mes ---------- */
+.grid{display:grid;grid-template-columns:repeat(7,1fr);padding:0 8px;row-gap:2px}
+.grid .cab{text-align:center;font-size:.8rem;color:var(--muted);padding:.25rem 0}
+.grid .cab.dom{color:var(--red)}
+.cel{border:0;background:none;border-radius:10px;padding:.35rem 0 .45rem;display:flex;flex-direction:column;
+     align-items:center;gap:4px;min-height:3.3rem}
+.cel .num{font:600 1.3rem/1 var(--display);width:2rem;padding:.12rem 0;border-radius:6px}
+.cel.dom .num{color:var(--red)}
+.cel.fuera{opacity:.4}
+.cel.hoy .num{box-shadow:inset 0 -3px 0 var(--red)}
+.cel.sel{background:var(--ink);color:var(--bg)}
+.cel.sel.dom .num{color:inherit}
+.puntos{display:flex;gap:3px;height:6px}
+.puntos i{width:6px;height:6px;border-radius:50%;background:var(--c)}
+.cel.sel .puntos i{box-shadow:0 0 0 1px var(--bg)}
+.mes-dia{margin:1rem 16px 0;padding-top:.75rem;border-top:1px solid var(--line)}
+.mes-dia .btn{margin-top:.75rem}
+
+/* ---------- fechas señaladas ---------- */
+.intro{margin:0 16px 1rem;color:var(--muted)}
+.fechas .ent{grid-template-columns:3.2rem 1fr;align-items:center}
+.mini{width:3.2rem;border-radius:6px;overflow:hidden;background:var(--surface);box-shadow:0 0 0 1px var(--line);
+      text-align:center;line-height:1}
+.mini .m{display:block;background:var(--red);color:#fff;font:600 .8rem/1 var(--display);padding:.2rem 0}
+.mini .n{display:block;font:700 1.6rem/1 var(--display);padding:.2rem 0 .25rem}
+.fechas{margin:0 16px}
+
+/* ---------- hoja de edición ---------- */
+dialog{border:0;padding:0;color:var(--ink);background:var(--surface)}
+dialog::backdrop{background:rgb(0 0 0 / .4)}
+#sheet{width:100%;max-width:560px;margin:auto auto 0;border-radius:18px 18px 0 0;max-height:92dvh;overflow:auto}
+@media (prefers-reduced-motion:no-preference){
+  #sheet[open]{animation:sube .22s ease-out}
+  @keyframes sube{from{transform:translateY(40px);opacity:.4}}
+}
+.hoja{padding:14px 18px calc(18px + env(safe-area-inset-bottom));display:grid;gap:.85rem}
+.hoja-cab{display:flex;align-items:center;justify-content:space-between}
+.hoja-cab h2{font:700 1.6rem/1 var(--display);margin:0}
+.x{border:0;background:none;width:40px;height:40px;font-size:1.7rem;line-height:1;color:var(--muted)}
+.campo{display:grid;gap:.25rem;min-width:0}
+.campo>span,.seg legend{font-size:.85rem;color:var(--muted)}
+.campo small{color:var(--muted);font-size:.8rem}
+input,select,textarea{font:inherit;font-size:16px;color:var(--ink);background:var(--bg);border:1px solid var(--line);
+      border-radius:10px;padding:.6rem .7rem;width:100%;min-width:0}
+input[type=date],input[type=time]{min-height:2.75rem}
+textarea{resize:vertical}
+.fila{display:grid;grid-template-columns:1fr 1fr;gap:.75rem;align-items:end}
+.fila.tres{grid-template-columns:1fr 1.4fr 1fr}
+.seg{border:0;padding:0;margin:0;display:flex;flex-wrap:wrap;gap:.4rem}
+.seg legend{width:100%;margin-bottom:.3rem;padding:0}
+.seg label{flex:1}
+.seg input{position:absolute;opacity:0;width:1px;height:1px}
+.seg span{display:block;text-align:center;border:1px solid var(--line);border-radius:10px;padding:.55rem .4rem;font-weight:600}
+.seg input:checked+span{border-color:var(--c,var(--ink));box-shadow:inset 0 0 0 1px var(--c,var(--ink));color:var(--c,var(--ink))}
+.seg input:focus-visible+span{outline:2px solid var(--p1);outline-offset:2px}
+.interruptor{display:flex;align-items:center;gap:.5rem;min-height:2.75rem}
+.interruptor input{width:1.25rem;height:1.25rem;accent-color:var(--ink)}
+.ayuda,.autor{margin:0;color:var(--muted);font-size:.85rem}
+.acciones{display:flex;justify-content:space-between;align-items:center;gap:1rem}
+.acciones .primary{margin-left:auto;min-width:8rem}
+
+#menu{border-radius:14px;padding:18px;width:min(320px,90vw)}
+#menu p{margin:0 0 .25rem}
+#menu .acciones{margin-top:1rem}
+
+.toast{position:fixed;left:16px;right:16px;max-width:520px;margin:0 auto;z-index:20;
+       bottom:calc(var(--nav-h) + env(safe-area-inset-bottom) + 86px);
+       background:var(--ink);color:var(--bg);border-radius:12px;padding:.7rem 1rem;display:flex;align-items:center;gap:1rem}
+.toast span{flex:1}
+.toast button{border:0;background:none;color:inherit;font-weight:700;text-decoration:underline}
+</style>
+</head>
+<body>
+
+<div id="v-cargando" class="center"><p class="vacio">Cargando…</p></div>
+
+<div id="v-config" class="center" hidden>
+  <div class="login">
+    <h1>Falta la configuración</h1>
+    <p>Sube a este repositorio el mismo <strong>config.js</strong> que usa la lista de la compra. El calendario usa el mismo proyecto de Firebase y los mismos dos correos.</p>
+  </div>
+</div>
+
+<div id="v-login" class="center" hidden>
+  <div class="login">
+    <div class="mini" aria-hidden="true" style="width:4.5rem"><span class="m" id="login-mes"></span><span class="n" id="login-dia" style="font-size:2.4rem"></span></div>
+    <h1>Calendario</h1>
+    <p>Las citas y fechas de casa, a la vista de los dos.</p>
+    <button class="btn primary" id="btn-google" type="button">Entrar con Google</button>
+    <details>
+      <summary>Entrar con correo y contraseña</summary>
+      <form id="f-login">
+        <input type="email" name="email" placeholder="Correo" autocomplete="username" required>
+        <input type="password" name="pass" placeholder="Contraseña" autocomplete="current-password" required>
+        <button class="btn" type="submit">Entrar</button>
+      </form>
+    </details>
+    <p class="err" id="login-err" hidden></p>
+  </div>
+</div>
+
+<div id="v-app" hidden>
+  <header class="top">
+    <div class="chips" role="group" aria-label="Qué citas mostrar"></div>
+    <button class="avatar" id="btn-cuenta" type="button" aria-label="Cuenta"></button>
+  </header>
+  <main id="main"></main>
+  <button class="fab" id="fab" type="button" aria-label="Añadir">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+  </button>
+  <nav class="tabs" aria-label="Vistas">
+    <button data-v="agenda" type="button">Agenda</button>
+    <button data-v="semana" type="button">Semana</button>
+    <button data-v="mes" type="button">Mes</button>
+    <button data-v="fechas" type="button">Fechas</button>
+  </nav>
+</div>
+
+<dialog id="sheet" aria-label="Edición">
+  <form id="f-evento" class="hoja" novalidate hidden>
+    <div class="hoja-cab"><h2 id="fe-titulo">Nueva cita</h2><button type="button" class="x" data-cerrar aria-label="Cerrar">×</button></div>
+    <label class="campo"><span>Qué</span><input name="titulo" maxlength="120" autocomplete="off" placeholder="Dentista, cena con amigos…"></label>
+    <fieldset class="seg" id="fe-para"></fieldset>
+    <div class="fila">
+      <label class="campo"><span>Día</span><input type="date" name="fecha"></label>
+      <label class="interruptor"><input type="checkbox" name="todoDia"><span>Todo el día</span></label>
+    </div>
+    <div class="fila" id="fe-horas">
+      <label class="campo"><span>Empieza</span><input type="time" name="hora"></label>
+      <label class="campo"><span>Termina (opcional)</span><input type="time" name="horaFin"></label>
+    </div>
+    <label class="campo" id="fe-fin"><span>Último día, si dura varios (opcional)</span><input type="date" name="fechaFin"></label>
+    <label class="campo"><span>Dónde (opcional)</span><input name="lugar" maxlength="120" autocomplete="off"></label>
+    <div class="fila">
+      <label class="campo"><span>Se repite</span>
+        <select name="repite"><option value="no">No</option><option value="semana">Cada semana</option><option value="mes">Cada mes</option><option value="anio">Cada año</option></select></label>
+      <label class="campo" id="fe-hasta"><span>Hasta (opcional)</span><input type="date" name="repiteHasta"></label>
+    </div>
+    <label class="campo"><span>Aviso</span><select name="aviso"></select>
+      <small>Los avisos llegarán cuando activemos las notificaciones.</small></label>
+    <label class="campo"><span>Notas (opcional)</span><textarea name="notas" rows="2" maxlength="1000"></textarea></label>
+    <p class="err" hidden></p>
+    <p class="autor" id="fe-autor"></p>
+    <div class="acciones">
+      <button type="button" class="btn peligro" id="fe-borrar">Eliminar</button>
+      <button type="submit" class="btn primary">Guardar</button>
+    </div>
+  </form>
+
+  <form id="f-fecha" class="hoja" novalidate hidden>
+    <div class="hoja-cab"><h2 id="ff-titulo">Nueva fecha</h2><button type="button" class="x" data-cerrar aria-label="Cerrar">×</button></div>
+    <fieldset class="seg">
+      <legend>Tipo</legend>
+      <label><input type="radio" name="tipo" value="cumple"><span>Cumpleaños</span></label>
+      <label><input type="radio" name="tipo" value="aniversario"><span>Aniversario</span></label>
+      <label><input type="radio" name="tipo" value="otra"><span>Otra</span></label>
+    </fieldset>
+    <label class="campo"><span id="ff-nlabel">De quién</span><input name="nombre" maxlength="80" autocomplete="off"></label>
+    <div class="fila tres">
+      <label class="campo"><span>Día</span><select name="dia"></select></label>
+      <label class="campo"><span>Mes</span><select name="mes"></select></label>
+      <label class="campo"><span>Año (opcional)</span><input name="anio" inputmode="numeric" maxlength="4" placeholder="1980"></label>
+    </div>
+    <p class="ayuda">Se repite cada año. Con el año, la app calcula los que cumple. Avisará 7 días antes y el mismo día.</p>
+    <label class="campo"><span>Notas (opcional)</span><textarea name="notas" rows="2" maxlength="500" placeholder="Ideas de regalo, dirección…"></textarea></label>
+    <p class="err" hidden></p>
+    <p class="autor" id="ff-autor"></p>
+    <div class="acciones">
+      <button type="button" class="btn peligro" id="ff-borrar">Eliminar</button>
+      <button type="submit" class="btn primary">Guardar</button>
+    </div>
+  </form>
+</dialog>
+
+<dialog id="menu" aria-label="Cuenta">
+  <p><strong id="menu-nombre"></strong></p>
+  <p class="ayuda" id="menu-email"></p>
+  <div class="acciones">
+    <button type="button" class="btn" id="menu-cerrar">Volver</button>
+    <button type="button" class="btn primary" id="btn-salir">Cerrar sesión</button>
+  </div>
+</dialog>
+
+<div class="toast" id="toast" role="status" hidden><span></span><button type="button" hidden>Deshacer</button></div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.2/firebase-app.js";
+import { getAuth, onAuthStateChanged, GoogleAuthProvider, signInWithPopup, signInWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/11.0.2/firebase-auth.js";
+import { initializeFirestore, persistentLocalCache, persistentMultipleTabManager, collection, onSnapshot, addDoc, setDoc, doc, deleteDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.0.2/firebase-firestore.js";
+
+/* =========================  utilidades de fecha  ========================= */
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;" }[c]));
+const pad = n => String(n).padStart(2, "0");
+const ymd = d => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+const parse = s => { const [y, m, d] = s.split("-").map(Number); return new Date(y, m - 1, d); };
+const addDays = (d, n) => new Date(d.getFullYear(), d.getMonth(), d.getDate() + n);
+const today = () => { const n = new Date(); return new Date(n.getFullYear(), n.getMonth(), n.getDate()); };
+const diffDays = (a, b) => Math.round((Date.UTC(b.getFullYear(), b.getMonth(), b.getDate()) - Date.UTC(a.getFullYear(), a.getMonth(), a.getDate())) / 864e5);
+const monday = d => addDays(d, -((d.getDay() + 6) % 7));
+const cap = s => s.charAt(0).toUpperCase() + s.slice(1);
+const fmt = o => new Intl.DateTimeFormat("es-ES", o);
+const F_DIA = fmt({ weekday: "long", day: "numeric", month: "long" });
+const F_WD = fmt({ weekday: "long" });
+const F_WDS = fmt({ weekday: "short" });
+const F_MES = fmt({ month: "long" });
+const F_MESC = fmt({ month: "short" });
+const MESES = ["enero","febrero","marzo","abril","mayo","junio","julio","agosto","septiembre","octubre","noviembre","diciembre"];
+
+const AVISOS_HORA = [["", "Sin aviso"], ["0", "A la hora"], ["15", "15 minutos antes"], ["60", "1 hora antes"], ["1440", "1 día antes"]];
+const AVISOS_DIA = [["", "Sin aviso"], ["dia9", "El mismo día a las 9:00"], ["vispera20", "El día antes a las 20:00"]];
+const REPITE = { semana: "Cada semana", mes: "Cada mes", anio: "Cada año" };
+
+/* =========================  estado  ========================= */
+let firebaseConfig, USUARIOS = {}, PERSONAS = [];
+let auth, db, me = null, eventos = [], fechas = [], escuchas = [];
+const st = { vista: "agenda", filtro: "todo", semana: null, mes: null, dia: null };
+
+const nombreDe = email => USUARIOS[email] || email || "alguien";
+const persona = email => PERSONAS.find(p => p.email === email);
+const colorPara = para => para === "ambos" ? "var(--both)" : (persona(para)?.color || "var(--muted)");
+const nombrePara = para => para === "ambos" ? "Los dos" : (persona(para)?.nombre || "—");
+
+function mostrar(id) {
+  for (const v of ["#v-cargando", "#v-config", "#v-login", "#v-app"]) $(v).hidden = v !== id;
+}
+
+/* =========================  arranque  ========================= */
+async function boot() {
+  try {
+    const cfg = await import("./config.js");
+    firebaseConfig = cfg.firebaseConfig;
+    USUARIOS = Object.fromEntries(Object.entries(cfg.USUARIOS || {}).map(([k, v]) => [k.toLowerCase(), v]));
+  } catch { return mostrar("#v-config"); }
+  if (!firebaseConfig?.apiKey || firebaseConfig.apiKey.startsWith("PEGA")) return mostrar("#v-config");
+  PERSONAS = Object.entries(USUARIOS).slice(0, 2).map(([email, nombre], i) => ({ email, nombre, color: `var(--p${i + 1})` }));
+
+  // App con nombre propio: su caché y su sesión no chocan con la lista de la compra (mismo dominio).
+  const app = initializeApp(firebaseConfig, "calendario");
+  auth = getAuth(app);
+  db = initializeFirestore(app, { localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() }) });
+
+  onAuthStateChanged(auth, user => {
+    escuchas.forEach(u => u()); escuchas = [];
+    if (!user) { me = null; return pantallaLogin(); }
+    const email = (user.email || "").toLowerCase();
+    if (!USUARIOS[email]) {
+      signOut(auth);
+      return pantallaLogin(`La cuenta ${email} no tiene acceso a este calendario.`);
+    }
+    me = email;
+    escuchar();
+    const p = persona(me);
+    $("#btn-cuenta").textContent = (USUARIOS[me] || "?").charAt(0).toUpperCase();
+    $("#btn-cuenta").style.setProperty("--c", p?.color || "var(--ink)");
+    mostrar("#v-app");
+    render();
+  });
+}
+
+function escuchar() {
+  const fallo = e => toast(e.code === "permission-denied"
+    ? "Sin permiso para leer. Añade las colecciones nuevas a las reglas de Firestore."
+    : "Error de conexión: " + e.message);
+  escuchas.push(onSnapshot(collection(db, "eventos"), s => { eventos = s.docs.map(d => ({ id: d.id, ...d.data() })); render(); }, fallo));
+  escuchas.push(onSnapshot(collection(db, "fechas"), s => { fechas = s.docs.map(d => ({ id: d.id, ...d.data() })); render(); }, fallo));
+}
+
+function pantallaLogin(msg) {
+  const h = today();
+  $("#login-mes").textContent = cap(F_MESC.format(h).replace(".", ""));
+  $("#login-dia").textContent = h.getDate();
+  $("#login-err").hidden = !msg;
+  $("#login-err").textContent = msg || "";
+  mostrar("#v-login");
+}
+
+const errLogin = e => pantallaLogin(({
+  "auth/invalid-credential": "Correo o contraseña incorrectos.",
+  "auth/wrong-password": "Correo o contraseña incorrectos.",
+  "auth/user-not-found": "Correo o contraseña incorrectos.",
+  "auth/popup-blocked": "No se ha podido abrir la ventana de Google. Entra con correo y contraseña.",
+  "auth/popup-closed-by-user": "Se cerró la ventana de Google antes de terminar.",
+  "auth/network-request-failed": "Sin conexión. Inténtalo cuando tengas red."
+})[e.code] || "No se ha podido entrar: " + e.message);
+
+$("#btn-google").addEventListener("click", () => signInWithPopup(auth, new GoogleAuthProvider()).catch(errLogin));
+$("#f-login").addEventListener("submit", e => {
+  e.preventDefault();
+  const f = e.target.elements;
+  signInWithEmailAndPassword(auth, f.email.value.trim(), f.pass.value).catch(errLogin);
+});
+
+/* =========================  cálculo de apariciones  ========================= */
+// Días en que empieza un evento (con repeticiones) entre desde y hasta, ambos incluidos.
+function inicios(ev, desde, hasta) {
+  const s = parse(ev.fecha), out = [];
+  if (!ev.repite || ev.repite === "no") { if (s >= desde && s <= hasta) out.push(s); return out; }
+  let fin = hasta;
+  if (ev.repiteHasta) { const h = parse(ev.repiteHasta); if (h < fin) fin = h; }
+  if (s > fin) return out;
+  if (ev.repite === "semana") {
+    const k = Math.max(0, Math.ceil(diffDays(s, desde) / 7));
+    for (let d = addDays(s, 7 * k); d <= fin; d = addDays(d, 7)) out.push(d);
+    return out;
+  }
+  const paso = ev.repite === "mes" ? 1 : 12, dia = s.getDate();
+  let k = Math.max(0, Math.floor(((desde.getFullYear() - s.getFullYear()) * 12 + desde.getMonth() - s.getMonth()) / paso) - 1);
+  for (; ; k++) {
+    const m = s.getMonth() + k * paso;
+    if (new Date(s.getFullYear(), m, 1) > fin) break;
+    const d = new Date(s.getFullYear(), m, dia);
+    if (d.getDate() !== dia) continue;          // p. ej. día 31 en un mes de 30: ese mes no hay
+    if (d >= desde) out.push(d);
+  }
+  return out;
+}
+
+// Fecha señalada en un año concreto (el 29 de febrero pasa al 28 en años no bisiestos).
+const fechaEn = (f, y) => {
+  const d = new Date(y, f.mes - 1, f.dia);
+  return d.getMonth() === f.mes - 1 ? d : new Date(y, f.mes, 0);
+};
+const proxima = (f, desde) => { const d = fechaEn(f, desde.getFullYear()); return d < desde ? fechaEn(f, desde.getFullYear() + 1) : d; };
+
+function recoger(desde, hasta) {
+  const mapa = new Map();
+  const poner = (k, e) => { if (!mapa.has(k)) mapa.set(k, []); mapa.get(k).push(e); };
+  for (const ev of eventos) {
+    if (!ev.fecha) continue;
+    if (st.filtro !== "todo" && ev.para !== "ambos" && ev.para !== st.filtro) continue;
+    const dur = ev.fechaFin ? Math.max(0, diffDays(parse(ev.fecha), parse(ev.fechaFin))) : 0;
+    for (const ini of inicios(ev, addDays(desde, -dur), hasta)) {
+      for (let i = 0; i <= dur; i++) {
+        const d = addDays(ini, i);
+        if (d >= desde && d <= hasta) poner(ymd(d), { tipo: "evento", ev, dia: i + 1, dias: dur + 1 });
+      }
+    }
+  }
+  for (const f of fechas) {
+    for (let y = desde.getFullYear(); y <= hasta.getFullYear(); y++) {
+      const d = fechaEn(f, y);
+      if (d >= desde && d <= hasta) poner(ymd(d), { tipo: "fecha", f, anios: f.anio ? y - f.anio : null });
+    }
+  }
+  const clave = e => e.tipo === "fecha" ? "0" + e.f.nombre : (e.ev.hora ? "2" + e.ev.hora : "1") + e.ev.titulo;
+  for (const l of mapa.values()) l.sort((a, b) => clave(a).localeCompare(clave(b)));
+  return mapa;
+}
+
+/* =========================  pintado  ========================= */
+const tituloFecha = f => f.tipo === "cumple" ? `Cumpleaños de ${f.nombre}` : f.tipo === "aniversario" ? `Aniversario: ${f.nombre}` : f.nombre;
+const aniosTexto = (f, n) => n == null || n < 0 ? "" : f.tipo === "cumple" ? `Cumple ${n}` : f.tipo === "aniversario" ? `${n} ${n === 1 ? "año" : "años"}` : "";
+
+function htmlEntrada(e) {
+  if (e.tipo === "fecha") {
+    const extra = aniosTexto(e.f, e.anios);
+    return `<li><button type="button" class="ent es-fecha" data-k="fecha" data-id="${esc(e.f.id)}">
+      <span class="hora"></span><span class="barra"></span>
+      <span><span class="t">${esc(tituloFecha(e.f))}</span>${extra ? `<span class="meta">${esc(extra)}</span>` : ""}</span></button></li>`;
+  }
+  const ev = e.ev, c = colorPara(ev.para);
+  const hora = ev.hora && e.dia === 1 ? `${esc(ev.hora)}${ev.horaFin ? `<small>${esc(ev.horaFin)}</small>` : ""}` : "";
+  const meta = [
+    `<span class="quien">${esc(nombrePara(ev.para))}</span>`,
+    ev.lugar ? `<span>${esc(ev.lugar)}</span>` : "",
+    e.dias > 1 ? `<span>Día ${e.dia} de ${e.dias}</span>` : "",
+    ev.repite && ev.repite !== "no" ? `<span>${REPITE[ev.repite] || ""}</span>` : ""
+  ].join("");
+  return `<li><button type="button" class="ent" data-k="evento" data-id="${esc(ev.id)}" style="--c:${c}">
+    <span class="hora">${hora}</span><span class="barra"></span>
+    <span><span class="t">${esc(ev.titulo)}</span><span class="meta">${meta}</span></span></button></li>`;
+}
+const htmlLista = l => `<ul class="lista">${l.map(htmlEntrada).join("")}</ul>`;
+const flecha = izq => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="${izq ? "M15 5l-7 7 7 7" : "M9 5l7 7-7 7"}"/></svg>`;
+
+function vAgenda() {
+  const hoy = today(), mapa = recoger(hoy, addDays(hoy, 60)), lHoy = mapa.get(ymd(hoy)) || [];
+  let h = `<section class="taco${hoy.getDay() === 0 ? " dom" : ""}" aria-label="Hoy">
+    <div class="taco-banda"><span class="aro"></span><span>${cap(F_MES.format(hoy))} ${hoy.getFullYear()}</span><span class="aro"></span></div>
+    <div class="taco-cuerpo"><div class="taco-num">${hoy.getDate()}</div><div class="taco-dia">${F_WD.format(hoy)}</div>
+    ${lHoy.length ? htmlLista(lHoy) : `<p class="vacio">Nada apuntado para hoy.</p>`}</div></section>`;
+  let dias = "";
+  for (let i = 1; i <= 60; i++) {
+    const d = addDays(hoy, i), l = mapa.get(ymd(d));
+    if (!l) continue;
+    dias += `<section class="dia"><h2${d.getDay() === 0 ? ' class="dom"' : ""}>${i === 1 ? "Mañana, " : ""}${F_DIA.format(d)}</h2>${htmlLista(l)}</section>`;
+  }
+  return h + `<h2 class="sec">Próximos 60 días</h2>` +
+    (dias || `<p class="vacio" style="margin:0 16px">No hay nada en los próximos 60 días. Pulsa + para añadir una cita.</p>`);
+}
+
+function vSemana() {
+  const hoy = today(), ini = st.semana || monday(hoy), fin = addDays(ini, 6);
+  st.semana = ini;
+  const mapa = recoger(ini, fin);
+  const rango = ini.getMonth() === fin.getMonth()
+    ? `${ini.getDate()} – ${fin.getDate()} de ${F_MES.format(fin)}`
+    : `${ini.getDate()} ${F_MESC.format(ini)} – ${fin.getDate()} ${F_MESC.format(fin)}`;
+  let h = `<div class="nav"><button type="button" data-nav="-1" aria-label="Semana anterior">${flecha(true)}</button>
+    <h1>${rango}</h1><button type="button" data-nav="1" aria-label="Semana siguiente">${flecha(false)}</button></div>`;
+  if (ymd(ini) !== ymd(monday(hoy))) h += `<button type="button" class="hoy-btn" data-hoy>Volver a esta semana</button>`;
+  for (let i = 0; i < 7; i++) {
+    const d = addDays(ini, i), k = ymd(d), l = mapa.get(k);
+    h += `<section class="sd${k === ymd(hoy) ? " hoy" : ""}">
+      <button type="button" class="sd-fecha${d.getDay() === 0 ? " dom" : ""}" data-nuevo="${k}" aria-label="Añadir cita el ${F_DIA.format(d)}">
+        <span class="n">${d.getDate()}</span><span class="w">${F_WDS.format(d).replace(".", "")}</span></button>
+      <div>${l ? htmlLista(l) : `<p class="libre">Libre</p>`}</div></section>`;
+  }
+  return h;
+}
+
+function vMes() {
+  const hoy = today();
+  const ref = st.mes || new Date(hoy.getFullYear(), hoy.getMonth(), 1);
+  st.mes = ref;
+  const sel = st.dia || hoy;
+  const ini = monday(ref), ultimo = new Date(ref.getFullYear(), ref.getMonth() + 1, 0), fin = addDays(monday(ultimo), 6);
+  const mapa = recoger(ini, fin);
+  let h = `<div class="nav"><button type="button" data-nav="-1" aria-label="Mes anterior">${flecha(true)}</button>
+    <h1>${F_MES.format(ref)} de ${ref.getFullYear()}</h1><button type="button" data-nav="1" aria-label="Mes siguiente">${flecha(false)}</button></div>`;
+  if (ref.getMonth() !== hoy.getMonth() || ref.getFullYear() !== hoy.getFullYear()) h += `<button type="button" class="hoy-btn" data-hoy>Volver a hoy</button>`;
+  h += `<div class="grid">` + ["L", "M", "X", "J", "V", "S", "D"].map((t, i) => `<div class="cab${i === 6 ? " dom" : ""}" aria-hidden="true">${t}</div>`).join("");
+  for (let d = ini; d <= fin; d = addDays(d, 1)) {
+    const k = ymd(d), l = mapa.get(k) || [];
+    const colores = [...new Set(l.map(e => e.tipo === "fecha" ? "var(--red)" : colorPara(e.ev.para)))].slice(0, 4);
+    const cls = ["cel", d.getMonth() !== ref.getMonth() && "fuera", d.getDay() === 0 && "dom", k === ymd(hoy) && "hoy", k === ymd(sel) && "sel"].filter(Boolean).join(" ");
+    h += `<button type="button" class="${cls}" data-dia="${k}" aria-label="${F_DIA.format(d)}${l.length ? `, ${l.length} ${l.length === 1 ? "cosa" : "cosas"}` : ""}">
+      <span class="num">${d.getDate()}</span><span class="puntos">${colores.map(c => `<i style="--c:${c}"></i>`).join("")}</span></button>`;
+  }
+  const lSel = recoger(sel, sel).get(ymd(sel)) || [];
+  return h + `</div><section class="mes-dia"><h2>${F_DIA.format(sel)}</h2>
+    ${lSel.length ? htmlLista(lSel) : `<p class="vacio">Nada apuntado.</p>`}
+    <button type="button" class="btn" data-nuevo="${ymd(sel)}">Añadir cita este día</button></section>`;
+}
+
+function vFechas() {
+  const hoy = today();
+  const l = fechas.map(f => { const n = proxima(f, hoy); return { f, n, dd: diffDays(hoy, n), anios: f.anio ? n.getFullYear() - f.anio : null }; })
+    .sort((a, b) => a.dd - b.dd || a.f.nombre.localeCompare(b.f.nombre));
+  let h = `<div class="nav"><h1>Fechas señaladas</h1></div>`;
+  if (!l.length) return h + `<p class="intro">Añade cumpleaños, aniversarios y otras fechas con el botón +. Se repiten cada año sin tener que volver a apuntarlas.</p>`;
+  h += `<p class="intro">Ordenadas por la más cercana.</p><ul class="lista fechas">`;
+  for (const { f, n, dd, anios } of l) {
+    const cuando = dd === 0 ? "Hoy" : dd === 1 ? "Mañana" : `En ${dd} días`;
+    const extra = aniosTexto(f, anios);
+    h += `<li><button type="button" class="ent" data-k="fecha" data-id="${esc(f.id)}">
+      <span class="mini"><span class="m">${esc(F_MESC.format(n).replace(".", ""))}</span><span class="n">${n.getDate()}</span></span>
+      <span><span class="t">${esc(tituloFecha(f))}</span><span class="meta"><span>${cuando}</span>${extra ? `<span>${esc(extra)}</span>` : ""}</span></span></button></li>`;
+  }
+  return h + `</ul>`;
+}
+
+function render() {
+  if (!me) return;
+  $(".chips").innerHTML = [["todo", "Todo", ""], ...PERSONAS.map(p => [p.email, p.nombre, p.color])]
+    .map(([v, t, c]) => `<button type="button" data-filtro="${esc(v)}" aria-pressed="${st.filtro === v}"${c ? ` style="--c:${c}"` : ""}>${c ? "<i></i>" : ""}${esc(t)}</button>`).join("");
+  $("#main").innerHTML = ({ agenda: vAgenda, semana: vSemana, mes: vMes, fechas: vFechas })[st.vista]();
+  document.querySelectorAll(".tabs button").forEach(b => b.setAttribute("aria-current", b.dataset.v === st.vista ? "page" : "false"));
+  $("#fab").setAttribute("aria-label", st.vista === "fechas" ? "Añadir fecha señalada" : "Añadir cita");
+}
+
+/* =========================  interacción  ========================= */
+$(".chips").addEventListener("click", e => {
+  const b = e.target.closest("[data-filtro]"); if (!b) return;
+  st.filtro = b.dataset.filtro; render();
+});
+$(".tabs").addEventListener("click", e => {
+  const b = e.target.closest("[data-v]"); if (!b) return;
+  st.vista = b.dataset.v; render(); window.scrollTo(0, 0);
+});
+$("#main").addEventListener("click", e => {
+  const t = e.target.closest("[data-k],[data-nav],[data-dia],[data-nuevo],[data-hoy]"); if (!t) return;
+  const hoy = today();
+  if (t.dataset.k === "evento") { const ev = eventos.find(x => x.id === t.dataset.id); if (ev) abrirEvento(ev); }
+  else if (t.dataset.k === "fecha") { const f = fechas.find(x => x.id === t.dataset.id); if (f) abrirFecha(f); }
+  else if (t.dataset.nuevo) abrirEvento(null, t.dataset.nuevo);
+  else if (t.dataset.dia) { st.dia = parse(t.dataset.dia); render(); }
+  else if ("hoy" in t.dataset) { st.semana = null; st.mes = null; st.dia = null; render(); }
+  else if (t.dataset.nav) {
+    const n = Number(t.dataset.nav);
+    if (st.vista === "semana") st.semana = addDays(st.semana, 7 * n);
+    else {
+      st.mes = new Date(st.mes.getFullYear(), st.mes.getMonth() + n, 1);
+      const esteMes = st.mes.getMonth() === hoy.getMonth() && st.mes.getFullYear() === hoy.getFullYear();
+      st.dia = esteMes ? hoy : st.mes;
+    }
+    render();
+  }
+});
+$("#fab").addEventListener("click", () => {
+  if (st.vista === "fechas") return abrirFecha(null);
+  const hoy = today();
+  const dia = st.vista === "mes" && st.dia ? st.dia : st.vista === "semana" && st.semana && ymd(st.semana) !== ymd(monday(hoy)) ? st.semana : hoy;
+  abrirEvento(null, ymd(dia));
+});
+$("#btn-cuenta").addEventListener("click", () => {
+  $("#menu-nombre").textContent = nombreDe(me); $("#menu-email").textContent = me; $("#menu").showModal();
+});
+$("#menu-cerrar").addEventListener("click", () => $("#menu").close());
+$("#btn-salir").addEventListener("click", () => { $("#menu").close(); signOut(auth); });
+document.addEventListener("visibilitychange", () => { if (!document.hidden) render(); });   // cambio de día con la app abierta
+
+/* =========================  hoja de edición  ========================= */
+const sheet = $("#sheet"), fe = $("#f-evento"), ff = $("#f-fecha");
+let editando = null;
+
+function abrirHoja(form) {
+  fe.hidden = form !== fe; ff.hidden = form !== ff;
+  form.querySelector(".err").hidden = true;
+  sheet.showModal(); sheet.scrollTop = 0;
+}
+function cerrarHoja() { sheet.close(); editando = null; }
+sheet.addEventListener("click", e => { if (e.target === sheet || e.target.closest("[data-cerrar]")) cerrarHoja(); });
+sheet.addEventListener("close", () => { editando = null; });
+function errorHoja(form, msg) { const p = form.querySelector(".err"); p.textContent = msg; p.hidden = false; p.scrollIntoView({ block: "nearest" }); }
+
+const autoria = x => {
+  let t = `Añadida por ${nombreDe(x.creadoPor)}.`;
+  if (x.editadoPor && x.editadoPor !== x.creadoPor) t += ` Último cambio: ${nombreDe(x.editadoPor)}.`;
+  return t;
+};
+
+// ----- citas -----
+function abrirEvento(ev, fecha) {
+  editando = ev ? { col: "eventos", item: ev } : null;
+  fe.reset();
+  const f = fe.elements;
+  $("#fe-titulo").textContent = ev ? "Editar cita" : "Nueva cita";
+  $("#fe-para").innerHTML = `<legend>Para</legend>` +
+    [...PERSONAS.map(p => [p.email, p.nombre, p.color]), ["ambos", "Los dos", "var(--both)"]]
+      .map(([v, t, c]) => `<label style="--c:${c}"><input type="radio" name="para" value="${esc(v)}"><span>${esc(t)}</span></label>`).join("");
+  const para = ev?.para || "ambos";
+  [...fe.querySelectorAll("input[name=para]")].forEach(r => { r.checked = r.value === para; });
+  if (!fe.querySelector("input[name=para]:checked")) fe.querySelector("input[name=para][value=ambos]").checked = true;
+  f.titulo.value = ev?.titulo || "";
+  f.fecha.value = ev?.fecha || fecha || ymd(today());
+  f.todoDia.checked = ev ? !ev.hora : false;
+  f.hora.value = ev?.hora || "";
+  f.horaFin.value = ev?.horaFin || "";
+  f.fechaFin.value = ev?.fechaFin || "";
+  f.lugar.value = ev?.lugar || "";
+  f.notas.value = ev?.notas || "";
+  f.repite.value = ev?.repite || "no";
+  f.repiteHasta.value = ev?.repiteHasta || "";
+  ajustarEvento(ev ? (ev.aviso ?? "") : null);
+  $("#fe-borrar").hidden = !ev;
+  $("#fe-autor").textContent = ev ? autoria(ev) : "";
+  abrirHoja(fe);
+}
+
+// aviso: null = valor por defecto; undefined = conservar el elegido si sigue siendo válido
+function ajustarEvento(aviso) {
+  const f = fe.elements, todo = f.todoDia.checked;
+  $("#fe-horas").hidden = todo;
+  $("#fe-fin").hidden = !todo;
+  $("#fe-hasta").hidden = f.repite.value === "no";
+  const ops = todo ? AVISOS_DIA : AVISOS_HORA;
+  const actual = aviso === undefined ? f.aviso.value : aviso;
+  f.aviso.innerHTML = ops.map(([v, t]) => `<option value="${v}">${t}</option>`).join("");
+  f.aviso.value = actual !== null && ops.some(o => o[0] === actual) ? actual : (todo ? "vispera20" : "60");
+}
+fe.addEventListener("change", e => { if (["todoDia", "repite"].includes(e.target.name)) ajustarEvento(undefined); });
+
+fe.addEventListener("submit", e => {
+  e.preventDefault();
+  const f = fe.elements, todo = f.todoDia.checked;
+  const titulo = f.titulo.value.trim(), fecha = f.fecha.value, hora = f.hora.value, horaFin = f.horaFin.value;
+  const fechaFin = f.fechaFin.value, repite = f.repite.value, repiteHasta = f.repiteHasta.value;
+  const err = !titulo ? "Escribe qué es la cita."
+    : !fecha ? "Elige el día."
+    : !todo && !hora ? "Pon la hora de inicio o marca «Todo el día»."
+    : !todo && horaFin && horaFin <= hora ? "La hora de fin tiene que ser posterior a la de inicio."
+    : todo && fechaFin && fechaFin < fecha ? "El último día no puede ser anterior al primero."
+    : repite !== "no" && repiteHasta && repiteHasta < fecha ? "La repetición no puede acabar antes del primer día." : "";
+  if (err) return errorHoja(fe, err);
+  const data = {
+    titulo, fecha,
+    para: fe.querySelector("input[name=para]:checked")?.value || "ambos",
+    hora: todo ? null : hora,
+    horaFin: todo ? null : (horaFin || null),
+    fechaFin: todo && fechaFin && fechaFin > fecha ? fechaFin : null,
+    lugar: f.lugar.value.trim(), notas: f.notas.value.trim(),
+    repite, repiteHasta: repite !== "no" && repiteHasta ? repiteHasta : null,
+    aviso: f.aviso.value || null
+  };
+  guardar("eventos", editando?.item.id, data);
+  cerrarHoja();
+  toast("Cita guardada");
+});
+$("#fe-borrar").addEventListener("click", () => {
+  const it = editando?.item; if (!it) return;
+  cerrarHoja();
+  borrar("eventos", it, it.repite && it.repite !== "no" ? "Cita eliminada con todas sus repeticiones" : "Cita eliminada");
+});
+
+// ----- fechas señaladas -----
+ff.elements.dia.innerHTML = Array.from({ length: 31 }, (_, i) => `<option value="${i + 1}">${i + 1}</option>`).join("");
+ff.elements.mes.innerHTML = MESES.map((m, i) => `<option value="${i + 1}">${m}</option>`).join("");
+const ETIQUETA = { cumple: ["De quién", "Ana"], aniversario: ["De qué", "Boda"], otra: ["Nombre", "Día de la madre"] };
+function ajustarFecha() {
+  const t = ff.querySelector("input[name=tipo]:checked")?.value || "cumple";
+  $("#ff-nlabel").textContent = ETIQUETA[t][0];
+  ff.elements.nombre.placeholder = ETIQUETA[t][1];
+}
+ff.addEventListener("change", e => { if (e.target.name === "tipo") ajustarFecha(); });
+
+function abrirFecha(fx) {
+  editando = fx ? { col: "fechas", item: fx } : null;
+  ff.reset();
+  const f = ff.elements, hoy = today();
+  $("#ff-titulo").textContent = fx ? "Editar fecha" : "Nueva fecha";
+  ff.querySelector(`input[name=tipo][value=${fx?.tipo || "cumple"}]`).checked = true;
+  f.nombre.value = fx?.nombre || "";
+  f.dia.value = String(fx?.dia || hoy.getDate());
+  f.mes.value = String(fx?.mes || hoy.getMonth() + 1);
+  f.anio.value = fx?.anio || "";
+  f.notas.value = fx?.notas || "";
+  ajustarFecha();
+  $("#ff-borrar").hidden = !fx;
+  $("#ff-autor").textContent = fx ? autoria(fx) : "";
+  abrirHoja(ff);
+}
+
+ff.addEventListener("submit", e => {
+  e.preventDefault();
+  const f = ff.elements;
+  const tipo = ff.querySelector("input[name=tipo]:checked")?.value || "cumple";
+  const nombre = f.nombre.value.trim(), dia = Number(f.dia.value), mes = Number(f.mes.value);
+  const anioTxt = f.anio.value.trim(), anio = anioTxt ? Number(anioTxt) : null;
+  const err = !nombre ? "Escribe el nombre."
+    : new Date(2024, mes - 1, dia).getMonth() !== mes - 1 ? `El ${dia} de ${MESES[mes - 1]} no existe.`
+    : anioTxt && !(Number.isInteger(anio) && anio >= 1900 && anio <= today().getFullYear()) ? "El año tiene que tener cuatro cifras y no ser futuro." : "";
+  if (err) return errorHoja(ff, err);
+  guardar("fechas", editando?.item.id, { tipo, nombre, dia, mes, anio, notas: f.notas.value.trim() });
+  cerrarHoja();
+  toast("Fecha guardada");
+});
+$("#ff-borrar").addEventListener("click", () => {
+  const it = editando?.item; if (!it) return;
+  cerrarHoja();
+  borrar("fechas", it, "Fecha eliminada");
+});
+
+/* =========================  escritura en Firestore  ========================= */
+// No se espera a la confirmación del servidor: sin conexión, el cambio se guarda en el móvil y se sube al volver la red.
+function guardar(col, id, data) {
+  const base = { ...data, editadoPor: me, editadoEn: serverTimestamp() };
+  const p = id ? setDoc(doc(db, col, id), base, { merge: true })
+               : addDoc(collection(db, col), { ...base, creadoPor: me, creadoEn: serverTimestamp() });
+  p.catch(fallo);
+}
+function borrar(col, item, msg) {
+  const { id, ...datos } = item;
+  deleteDoc(doc(db, col, id)).catch(fallo);
+  toast(msg, () => setDoc(doc(db, col, id), datos).catch(fallo));
+}
+const fallo = e => toast(e.code === "permission-denied"
+  ? "No se ha guardado: falta permiso en las reglas de Firestore."
+  : "No se ha guardado: " + e.message);
+
+/* =========================  aviso inferior  ========================= */
+let toastT;
+function toast(msg, deshacer) {
+  const t = $("#toast"), b = t.querySelector("button");
+  t.querySelector("span").textContent = msg;
+  b.hidden = !deshacer;
+  b.onclick = () => { t.hidden = true; deshacer(); };
+  t.hidden = false;
+  clearTimeout(toastT);
+  toastT = setTimeout(() => { t.hidden = true; }, deshacer ? 6000 : 2500);
+}
+
+if ("serviceWorker" in navigator) navigator.serviceWorker.register("./sw.js").catch(() => {});
+boot();
+</script>
+</body>
+</html>
