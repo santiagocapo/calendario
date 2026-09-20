@@ -18,6 +18,6 @@ export const USUARIOS = {
 };
 // Direcciones de las dos apps, para saltar de una a otra con un botón.
 export const APPS = {
-  compra: "https://santiagocapo.github.io/NOMBRE-DEL-REPO-DE-LA-LISTA/",
+  compra: "https://santiagocapo.github.io/compras/",
   calendario: "https://santiagocapo.github.io/calendario/"
 };
