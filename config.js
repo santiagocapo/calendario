@@ -16,3 +16,8 @@ export const USUARIOS = {
   "santiagocapo@gmail.com": "Santi",
   "olimpiamadridtaverner@gmail.com": "Olimpia"
 };
+// Direcciones de las dos apps, para saltar de una a otra con un botón.
+export const APPS = {
+  compra: "https://santiagocapo.github.io/NOMBRE-DEL-REPO-DE-LA-LISTA/",
+  calendario: "https://santiagocapo.github.io/calendario/"
+};
