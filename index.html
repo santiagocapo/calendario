@@ -561,7 +561,10 @@ function escuchar() {
   escuchas.push(onSnapshot(collection(db, "eventos"), s => { eventos = s.docs.map(d => ({ id: d.id, ...d.data() })); render(); }, fallo));
   escuchas.push(onSnapshot(collection(db, "fechas"), s => { fechas = s.docs.map(d => ({ id: d.id, ...d.data() })); render(); }, fallo));
   escuchas.push(onSnapshot(collection(db, "platos"), s => { platos = s.docs.map(d => ({ id: d.id, ...d.data() })); render(); if (!hSlot.hidden && sheet.open) pintarSlot(); }, fallo));
-  const ext = (q, fijar) => escuchas.push(onSnapshot(q, s => { fijar(s.docs.map(d => ({ id: d.id, ...d.data() }))); render(); }, () => { }));
+  const ext = (q, fijar) => escuchas.push(onSnapshot(q, s => { fijar(s.docs.map(d => ({ id: d.id, ...d.data() }))); render(); },
+    e => toast(e.code === "permission-denied"
+      ? "No se pueden leer los calendarios conectados: falta el bloque «externos» en las reglas de Firestore."
+      : "Error al leer los calendarios conectados: " + e.message)));
   ext(query(collection(db, "externos"), where("publico", "==", true)), l => { extPub = l; });
   ext(query(collection(db, "externos"), where("soloPara", "==", me)), l => { extMios = l; });
   escuchas.push(onSnapshot(collection(db, "items"), s => { items = s.docs.map(d => ({ id: d.id, ...d.data() })); }, fallo));
