@@ -21,3 +21,4 @@ export const APPS = {
   compra: "https://santiagocapo.github.io/compras/",
   calendario: "https://santiagocapo.github.io/calendario/"
 };
+   export const VAPID = "BIGk1NtlE61ejBync_hEArzFSHLD_ocJalWyep2iWsRsWPv5tPAycAV5Z6zK3BnH96U2P5av_tcSskNBiuYH3co";
