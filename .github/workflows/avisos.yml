@@ -1,0 +1,44 @@
+name: Avisos
+
+on:
+  schedule:
+    - cron: "*/10 * * * *"   # cada 10 minutos (GitHub puede retrasarlo unos minutos)
+  workflow_dispatch:
+    inputs:
+      prueba:
+        description: "Enviar un aviso de prueba a todos los dispositivos activados"
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+  actions: write
+
+concurrency:
+  group: avisos
+  cancel-in-progress: false
+
+jobs:
+  enviar:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Instalar
+        working-directory: avisos
+        run: npm install --no-audit --no-fund --silent
+      - name: Enviar avisos
+        run: node avisos/enviar.mjs
+        env:
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+          PRUEBA: ${{ inputs.prueba }}
+      - name: Mantener activa la programación
+        # GitHub desactiva las tareas programadas de los repositorios públicos sin actividad en 60 días.
+        if: github.event_name == 'schedule'
+        continue-on-error: true
+        run: gh api -X PUT "repos/${{ github.repository }}/actions/workflows/avisos.yml/enable" --silent
+        env:
+          GH_TOKEN: ${{ github.token }}
