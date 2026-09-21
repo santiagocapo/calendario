@@ -39,13 +39,20 @@ const fechaIcal = t => `${t.year}-${pad(t.month)}-${pad(t.day)}`;          // pa
 const menosUnDia = s => new Date(Date.parse(s + "T00:00:00Z") - DIA).toISOString().slice(0, 10);
 const corto = (s, n) => (s || "").replace(/\s+/g, " ").trim().slice(0, n);
 
-function convertir(ev, ini, fin) {
+// Hora «de pared»: la que pone el calendario, sin convertir de zona.
+const pared = t => ({ f: fechaIcal(t), h: `${pad(t.hour)}:${pad(t.minute)}` });
+// Hora flotante (sin zona): según el estándar es hora local, pero ical.js la tomaría como UTC en el servidor.
+const flotante = t => !t.zone || t.zone.tzid === "floating";
+
+function convertir(ev, ini, fin, horaLocal) {
   const t = corto(ev.summary, 150) || "(Sin título)", l = corto(ev.location, 150), n = corto(ev.description, 400);
   if (ini.isDate) {
     const f = fechaIcal(ini), ultimo = fin ? menosUnDia(fechaIcal(fin)) : f;
     return { t, f, h: null, hf: null, ff: ultimo > f ? ultimo : null, l, n };
   }
-  const a = local(ini.toJSDate()), b = fin ? local(fin.toJSDate()) : null;
+  const aLocal = horaLocal || flotante(ini);
+  const a = aLocal ? pared(ini) : local(ini.toJSDate());
+  const b = !fin ? null : (horaLocal || flotante(fin)) ? pared(fin) : local(fin.toJSDate());
   return { t, f: a.f, h: a.h, hf: b && b.f === a.f && b.h !== a.h ? b.h : null, ff: b && b.f > a.f ? b.f : null, l, n };
 }
 
@@ -58,8 +65,8 @@ async function importar(fu, i) {
   const exp = new IcalExpander({ ics, maxIterations: 5000, skipInvalidDates: true });
   const { events, occurrences } = exp.between(new Date(ahora - ATRAS * DIA), new Date(ahora + ADELANTE * DIA));
   const citas = [
-    ...events.filter(e => e.component.getFirstPropertyValue("status") !== "CANCELLED").map(e => convertir(e, e.startDate, e.endDate)),
-    ...occurrences.filter(o => o.item.component.getFirstPropertyValue("status") !== "CANCELLED").map(o => convertir(o.item, o.startDate, o.endDate))
+    ...events.filter(e => e.component.getFirstPropertyValue("status") !== "CANCELLED").map(e => convertir(e, e.startDate, e.endDate, fu.horaLocal)),
+    ...occurrences.filter(o => o.item.component.getFirstPropertyValue("status") !== "CANCELLED").map(o => convertir(o.item, o.startDate, o.endDate, fu.horaLocal))
   ].sort((a, b) => (a.f + (a.h || "")).localeCompare(b.f + (b.h || ""))).slice(0, MAX_CITAS);
 
   const soloYo = fu.verPara === "propio";
