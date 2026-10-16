@@ -58,6 +58,20 @@ Colores: la primera persona de `USUARIOS` en azul, la segunda en rosa, «Los dos
 - Lo que se añade aparece en la lista de la compra como producto puntual, con la nota «Para: nombre del plato» y el nombre de quien lo añadió. Si el producto ya existía (por ejemplo, un habitual), solo se vuelve a poner en la lista.
 - En la parte inferior están los platos guardados para editarlos o eliminarlos. Eliminar un plato no lo borra de los menús ya puestos.
 
+## Criterios de diseño
+
+Se aplican a toda la app y a cualquier función que se añada:
+
+- **Rendimiento con muchos datos**: nada de recorrer listas enteras al repintar. Los calendarios externos (cientos de citas) se reparten por días una sola vez al recibirlos, y las respuestas seguidas de Firebase se agrupan en un único repintado.
+- **Animación ligera**: solo `transform` y `opacity`, nunca más de 0,25 s, y desactivadas con `prefers-reduced-motion`.
+- **Arquitectura**: resumen en tarjetas y detalle al tocar, nunca una parrilla tipo Excel. Buscador y filtros siempre visibles arriba.
+- **Pulsación**: todo lo accionable mide 44 px (2,75 rem) como mínimo, y las filas de lista 52 px (3,25 rem).
+- **Espaciado**: múltiplos de 8 px mediante las variables `--e1`…`--e4` y `--m`; se evitan bordes y separadores innecesarios.
+- **Legibilidad**: interlineado 1,6 en el texto descriptivo.
+- **Unidades relativas**: `rem` y `em`; la app aguanta un zoom del 200 % sin desbordes (comprobado a 195, 320, 390 y 768 px).
+- **Teclado y foco**: todo operable con el tabulador, con `:focus-visible` de 3 px bien visible.
+- **Nunca solo color**: cada calendario tiene color *y* forma (círculo, cuadrado, rombo, anillo, barra). En las listas aparece además su nombre en texto, y el menú de la inicial hace de leyenda.
+
 ## Instalación
 
 El calendario reutiliza el proyecto de Firebase de la lista de la compra, así que no hay que crear nada nuevo en Firebase.
